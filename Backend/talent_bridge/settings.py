@@ -14,7 +14,7 @@ from pathlib import Path
 import os
 from dotenv import load_dotenv
 from datetime import timedelta
-from celery import Celery
+import dj_database_url 
 from .env_validator import validate_env
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -22,22 +22,26 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 dotenv_path = BASE_DIR.parent / '.env'
 load_dotenv(dotenv_path)
 
-validate_env()
-
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
+# Only validate env locally, skip in production to avoid build errors if vars are missing during build
+if os.getenv('RENDER') != 'true': 
+    validate_env()
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv('SECRET_KEY')
+SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-default-key-change-me')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv('DEBUG') == 'True'
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0']
+# 1. Get the Render URL if it exists
+RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
 
-
-# Application definition
-
+if RENDER_EXTERNAL_HOSTNAME:
+    # If on Render, ONLY allow the specific Render URL
+    ALLOWED_HOSTS = [RENDER_EXTERNAL_HOSTNAME]
+else:
+    # If Local, allow localhost
+    ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0']
+    
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -56,6 +60,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -86,56 +91,34 @@ WSGI_APPLICATION = 'talent_bridge.wsgi.application'
 
 
 # Database
-# https://docs.djangoproject.com/en/6.0/ref/settings/#databases
-
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.getenv('DB_NAME'),
-        'USER': os.getenv('DB_USER'),
-        'PASSWORD': os.getenv('DB_PASSWORD'),
-        'HOST': os.getenv('DB_HOST'),
-        'PORT': os.getenv('DB_PORT'),
-    }
+    'default': dj_database_url.config(
+        default=os.getenv('DATABASE_URL', 'sqlite:///db.sqlite3'),
+        conn_max_age=600
+    )
 }
 
 
 # Password validation
-# https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators
-
 AUTH_PASSWORD_VALIDATORS = [
-    {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
-    },
+    { 'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator', },
+    { 'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator', },
+    { 'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator', },
+    { 'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator', },
 ]
 
 
 # Internationalization
-# https://docs.djangoproject.com/en/6.0/topics/i18n/
-
 LANGUAGE_CODE = 'en-us'
-
 TIME_ZONE = 'UTC'
-
 USE_I18N = True
-
 USE_TZ = True
 
 
 # Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/6.0/howto/static-files/
-
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / "staticfiles"
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 AUTH_USER_MODEL = 'users.User'
 
@@ -143,7 +126,12 @@ AUTH_USER_MODEL = 'users.User'
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    # You will add your deployed frontend URL here later, e.g.:
+    # "https://my-frontend.vercel.app",
 ]
+
+# Allow all for now if you are debugging CORS issues (Optional)
+# CORS_ALLOW_ALL_ORIGINS = True 
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
@@ -161,9 +149,9 @@ REST_FRAMEWORK = {
         'rest_framework.throttling.UserRateThrottle'
     ],
     'DEFAULT_THROTTLE_RATES': {
-        'anon': '3/minute',   # Unauthenticated users
-        'user': '5/minute',  # Logged in users
-        'burst': '10/minute',
+        'anon': '5/minute', 
+        'user': '10/minute',
+        'burst': '20/minute',
         'registration': '5/hour',
     }
 } 
@@ -184,33 +172,28 @@ SWAGGER_SETTINGS = {
     }
 }
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
-
-app = Celery('talent_bridge')
-app.config_from_object('django.conf:settings', namespace='CELERY')
-app.autodiscover_tasks()
-
-CACHES = {
-    "default": {
-        "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": "redis://127.0.0.1:6379/1",
-        "OPTIONS": {
-            "CLIENT_CLASS": "django_redis.client.DefaultClient",
-        }
-    }
-}
-
+# Celery Configuration
 CELERY_BROKER_URL = os.getenv('REDIS_URL', 'redis://127.0.0.1:6379/1')
-CELERY_RESULT_BACKEND = 'django-db' # Stores task results in your Postgres DB
+CELERY_RESULT_BACKEND = 'django-db'
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 
-# This is the "Brain" that runs your Job Expiry every hour
 CELERY_BEAT_SCHEDULE = {
     'deactivate-jobs-every-hour': {
         'task': 'jobs.tasks.deactivate_expired_jobs',
         'schedule': 3600.0, 
     },
+}
+
+
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": os.getenv('REDIS_URL', "redis://127.0.0.1:6379/1"),
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+        }
+    }
 }
 
 MEDIA_URL = '/media/'
@@ -236,3 +219,5 @@ LOGGING = {
         'level': 'INFO',
     },
 }
+
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'talent_bridge.settings')
