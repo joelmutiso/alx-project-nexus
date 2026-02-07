@@ -1,5 +1,4 @@
 services:
-  # 1. The Backend Web Server
   - type: web
     name: talent-bridge-backend
     env: docker
@@ -21,10 +20,8 @@ services:
         value: "*"
       - key: DISABLE_COLLECTSTATIC
         value: "1"
-    dockerCommand: python -m gunicorn talent_bridge.wsgi:application --bind 0.0.0.0:$PORT
     healthCheckPath: /admin/login/
 
-  # 2. The Celery Worker (Background Tasks)
   - type: worker
     name: talent-bridge-worker
     env: docker
