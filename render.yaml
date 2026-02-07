@@ -3,8 +3,8 @@ services:
   - type: web
     name: talent-bridge-backend
     env: docker
-    dockerContext: .
-    dockerfilePath: ./Backend/Dockerfile
+    dockerContext: Backend
+    dockerfilePath: Backend/Dockerfile
     plan: free
     branch: main
     numInstances: 1
@@ -19,15 +19,17 @@ services:
         generateValue: true
       - key: ALLOWED_HOSTS
         value: "*"
+      - key: DISABLE_COLLECTSTATIC
+        value: "1"
     dockerCommand: "sh -c 'gunicorn backend.talent_bridge.wsgi:application --bind 0.0.0.0:$PORT'"
-    healthCheckPath: /admin/login/  
+    healthCheckPath: /admin/login/
 
-  # 2. The Celery Worker (Background Tasks)
+  # 2. The Celery Worker
   - type: worker
     name: talent-bridge-worker
     env: docker
-    dockerContext: .
-    dockerfilePath: ./Backend/Dockerfile
+    dockerContext: Backend
+    dockerfilePath: Backend/Dockerfile
     plan: free
     branch: main
     envVars:
@@ -43,4 +45,6 @@ services:
           type: web
           name: talent-bridge-backend
           envVarKey: REDIS_URL
+      - key: DISABLE_COLLECTSTATIC
+        value: "1"
     dockerCommand: "celery -A backend.talent_bridge worker -l info"
