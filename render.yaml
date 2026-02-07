@@ -12,14 +12,15 @@ services:
       - key: DEBUG
         value: "False"
       - key: DATABASE_URL
-        sync: false  
+        sync: false
       - key: REDIS_URL
-        sync: false  
+        sync: false
       - key: SECRET_KEY
         generateValue: true
       - key: ALLOWED_HOSTS
         value: "*"
-    startCommand: "gunicorn backend.talent_bridge.wsgi:application --bind 0.0.0.0:$PORT"
+    dockerCommand: "sh -c 'gunicorn backend.talent_bridge.wsgi:application --bind 0.0.0.0:$PORT'"
+    healthCheckPath: /admin/login/  
 
   # 2. The Celery Worker (Background Tasks)
   - type: worker
@@ -42,4 +43,4 @@ services:
           type: web
           name: talent-bridge-backend
           envVarKey: REDIS_URL
-    startCommand: "celery -A backend.talent_bridge worker -l info"
+    dockerCommand: "celery -A backend.talent_bridge worker -l info"
