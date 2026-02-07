@@ -1,8 +1,9 @@
-from rest_framework import generics
+from rest_framework import generics, status, permissions
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
-from .models import Job
-from .serializers import JobSerializer
+from .models import Job, Application
+from .serializers import JobSerializer, ApplicationSerializer
 from .permissions import IsEmployerOrReadOnly, IsOwnerOrReadOnly
+from rest_framework.exceptions import ValidationError
 
 class JobListCreateView(generics.ListCreateAPIView):
     """
@@ -25,3 +26,26 @@ class JobDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Job.objects.all()
     serializer_class = JobSerializer
     permission_classes = [IsAuthenticatedOrReadOnly, IsOwnerOrReadOnly]
+
+class ApplyJobView(generics.CreateAPIView):
+    """
+    POST: Apply for a specific job (Candidates only).
+    """
+    serializer_class = ApplicationSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def perform_create(self, serializer):
+        # 1. Get the Job ID from the URL
+        job_id = self.kwargs.get('pk')
+        job = generics.get_object_or_404(Job, pk=job_id)
+
+        # 2. Check if user is a Candidate
+        if not self.request.user.is_candidate:
+            raise ValidationError("Only candidates can apply for jobs.")
+
+        # 3. Check if already applied
+        if Application.objects.filter(job=job, candidate=self.request.user).exists():
+            raise ValidationError("You have already applied for this job.")
+
+        # 4. Save
+        serializer.save(candidate=self.request.user, job=job)
