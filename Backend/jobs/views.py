@@ -1,22 +1,27 @@
-from rest_framework import generics, status, permissions, parsers
+from rest_framework import generics, status, permissions, parsers, filters
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from .models import Job, Application
 from .serializers import JobSerializer, ApplicationSerializer
 from .permissions import IsEmployerOrReadOnly, IsOwnerOrReadOnly
 from rest_framework.exceptions import ValidationError
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import filters
 from .tasks import send_application_notification
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from .filters import JobFilter
 
 class JobListCreateView(generics.ListCreateAPIView):
     queryset = Job.objects.select_related('employer').filter(is_active=True).order_by('-created_at')
     serializer_class = JobSerializer
     permission_classes = [IsAuthenticatedOrReadOnly, IsEmployerOrReadOnly]
-    filter_backends = [DjangoFilterBackend, filters.SearchFilter]
-    filterset_fields = ['job_type', 'remote_status', 'location']
-    search_fields = ['title', 'description', 'company_name']
+    
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    
+    filterset_class = JobFilter 
+    
+    search_fields = ['title', 'description', 'requirements', 'company_name']
+
+    ordering_fields = ['created_at', 'salary']
 
     def perform_create(self, serializer):
         serializer.save(employer=self.request.user)
@@ -50,7 +55,7 @@ class ApplyJobView(generics.CreateAPIView):
             )
         except Exception as e:
             print(f"Notification failed but application was saved: {e}")
-            
+
 class JobApplicationsView(generics.ListAPIView):
     serializer_class = ApplicationSerializer
     permission_classes = [permissions.IsAuthenticated]

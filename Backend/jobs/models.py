@@ -16,17 +16,31 @@ class Job(models.Model):
         REMOTE = 'RE', 'Remote'
         HYBRID = 'HY', 'Hybrid'
 
+    class ExperienceLevel(models.TextChoices):
+        JUNIOR = 'Junior', 'Junior (0-2 years)'
+        MID = 'Mid', 'Mid-Level (2-5 years)'
+        SENIOR = 'Senior', 'Senior (5+ years)'
+        LEAD = 'Lead', 'Lead / Manager'
+
+    experience_level = models.CharField(
+        max_length=20,
+        choices=ExperienceLevel.choices,
+        default=ExperienceLevel.MID
+    )
+
     employer = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name='jobs'
     )
+    
     title = models.CharField(max_length=255)
     company_name = models.CharField(max_length=255, help_text="Auto-filled from Employer Profile if left blank")
     description = models.TextField()
     requirements = models.TextField(help_text="Key skills required")
     location = models.CharField(max_length=100)
     salary_range = models.CharField(max_length=100, blank=True, help_text="e.g. $50k - $70k")
+    salary = models.PositiveIntegerField(default=0, help_text="Numeric value for sorting/filtering")
     job_type = models.CharField(max_length=2, choices=JobType.choices, default=JobType.FULL_TIME)
     remote_status = models.CharField(max_length=2, choices=RemoteStatus.choices, default=RemoteStatus.ONSITE)
     is_active = models.BooleanField(default=True)
