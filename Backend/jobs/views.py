@@ -4,6 +4,8 @@ from .models import Job, Application
 from .serializers import JobSerializer, ApplicationSerializer
 from .permissions import IsEmployerOrReadOnly, IsOwnerOrReadOnly
 from rest_framework.exceptions import ValidationError
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework import filters
 
 class JobListCreateView(generics.ListCreateAPIView):
     """
@@ -13,9 +15,11 @@ class JobListCreateView(generics.ListCreateAPIView):
     queryset = Job.objects.filter(is_active=True).order_by('-created_at')
     serializer_class = JobSerializer
     permission_classes = [IsAuthenticatedOrReadOnly, IsEmployerOrReadOnly]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter]
+    filterset_fields = ['job_type', 'remote_status', 'location']
+    search_fields = ['title', 'description', 'company_name']
 
     def perform_create(self, serializer):
-        # Automatically set the 'employer' field to the current user
         serializer.save(employer=self.request.user)
 
 class JobDetailView(generics.RetrieveUpdateDestroyAPIView):
@@ -68,3 +72,19 @@ class JobApplicationsView(generics.ListAPIView):
 
         # 3. Return all applications for this job
         return Application.objects.filter(job=job).order_by('-created_at')
+    
+class ApplicationUpdateView(generics.UpdateAPIView):
+    """
+    PATCH: Update application status (Employer only).
+    """
+    queryset = Application.objects.all()
+    serializer_class = ApplicationSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def perform_update(self, serializer):
+        application = self.get_object()
+        # Security: Only the employer who owns the job can change the status
+        if application.job.employer != self.request.user:
+            raise ValidationError("You cannot change the status of this application.")
+        
+        serializer.save()
