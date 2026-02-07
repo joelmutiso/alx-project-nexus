@@ -21,6 +21,7 @@ from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
 from django.conf import settings
 from django.conf.urls.static import static
+from django.views.generic import RedirectView
 from .views import health_check
 
 schema_view = get_schema_view(
@@ -37,17 +38,16 @@ schema_view = get_schema_view(
 )
 
 urlpatterns = [
+    path('', RedirectView.as_view(url='/api/swagger/', permanent=False)),
     path('health/', health_check, name='health_check'),
     path('admin/', admin.site.urls),
     
-    # API Routes
-    path('api/v1/auth/', include('users.urls')), # Connects our users app
-    path('api/v1/jobs/', include('jobs.urls')), #
+    path('api/v1/auth/', include('users.urls')),
+    path('api/v1/jobs/', include('jobs.urls')),
     
-    # Swagger Documentation URLs
-    path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
-    path('redoc/', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
-    re_path(r'^swagger(?P<format>\.json|\.yaml)$', schema_view.without_ui(cache_timeout=0), name='schema-json'),
+    path('api/swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
+    path('api/redoc/', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
+    re_path(r'^api/swagger(?P<format>\.json|\.yaml)$', schema_view.without_ui(cache_timeout=0), name='schema-json'),
 ]
 
 if settings.DEBUG:
