@@ -22,4 +22,5 @@ urlpatterns = [
     
     # API Routes
     path('api/auth/', include('users.urls')), # Connects our users app
+    path('api/jobs/', include('jobs.urls')), #
 ]

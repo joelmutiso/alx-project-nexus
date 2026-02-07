@@ -88,3 +88,6 @@ next-env.d.ts
 # Temporary files or backups
 *.bak
 *.tmp
+docker-compose.override.yml
+postgres_data/
+redis_data/
