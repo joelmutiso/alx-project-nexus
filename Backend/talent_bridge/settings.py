@@ -163,7 +163,8 @@ REST_FRAMEWORK = {
     'DEFAULT_THROTTLE_RATES': {
         'anon': '3/minute',   # Unauthenticated users
         'user': '5/minute',  # Logged in users
-        'burst': '10/minute', # Prevent rapid clicking
+        'burst': '10/minute',
+        'registration': '5/hour',
     }
 } 
 

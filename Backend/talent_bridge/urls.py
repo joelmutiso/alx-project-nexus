@@ -21,6 +21,7 @@ from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
 from django.conf import settings
 from django.conf.urls.static import static
+from .views import health_check
 
 schema_view = get_schema_view(
    openapi.Info(
@@ -36,6 +37,7 @@ schema_view = get_schema_view(
 )
 
 urlpatterns = [
+    path('health/', health_check, name='health_check'),
     path('admin/', admin.site.urls),
     
     # API Routes
