@@ -21,10 +21,10 @@ services:
         value: "*"
       - key: DISABLE_COLLECTSTATIC
         value: "1"
-    dockerCommand: "sh -c 'gunicorn backend.talent_bridge.wsgi:application --bind 0.0.0.0:$PORT'"
+    dockerCommand: "sh -c 'python -m gunicorn talent_bridge.wsgi:application --bind 0.0.0.0:$PORT'"
     healthCheckPath: /admin/login/
 
-  # 2. The Celery Worker
+  # 2. The Celery Worker (Background Tasks)
   - type: worker
     name: talent-bridge-worker
     env: docker
@@ -47,4 +47,4 @@ services:
           envVarKey: REDIS_URL
       - key: DISABLE_COLLECTSTATIC
         value: "1"
-    dockerCommand: "celery -A backend.talent_bridge worker -l info"
+    dockerCommand: "sh -c 'python -m celery -A talent_bridge worker -l info'"
