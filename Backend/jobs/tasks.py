@@ -2,6 +2,8 @@ from celery import shared_task
 from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
+from .models import Job, Application
+from django.utils import timezone
 
 @shared_task(bind=True, max_retries=3)
 def send_application_notification(self, employer_email, job_title, candidate_email):
@@ -32,3 +34,20 @@ def send_application_notification(self, employer_email, job_title, candidate_ema
     except Exception as exc:
         # If the email fails (e.g., network issue), try again in 5 minutes
         raise self.retry(exc=exc, countdown=300)
+    
+@shared_task
+def deactivate_expired_jobs():
+    """
+    Runs periodically to close jobs that have passed their deadline.
+    """
+    now = timezone.now()
+    
+    # Find all active jobs where the deadline is in the past
+    expired_jobs = Job.objects.filter(is_active=True, deadline__lt=now)
+    count = expired_jobs.count()
+    
+    if count > 0:
+        expired_jobs.update(is_active=False)
+        return f"Successfully closed {count} expired jobs."
+    
+    return "No expired jobs found."
