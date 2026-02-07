@@ -12,18 +12,16 @@ services:
       - key: DEBUG
         value: "False"
       - key: DATABASE_URL
-        fromDatabase:
-          name: talent-bridge-db
-          property: connectionString
+        sync: false  
       - key: REDIS_URL
-        value: redis://red-xxxxx:6379 
+        sync: false  
       - key: SECRET_KEY
         generateValue: true
       - key: ALLOWED_HOSTS
         value: "*"
     startCommand: "gunicorn backend.talent_bridge.wsgi:application --bind 0.0.0.0:$PORT"
 
-  # 2. The Celery Worker 
+  # 2. The Celery Worker (Background Tasks)
   - type: worker
     name: talent-bridge-worker
     env: docker
@@ -35,16 +33,13 @@ services:
       - key: DEBUG
         value: "False"
       - key: DATABASE_URL
-        fromDatabase:
-          name: talent-bridge-db
-          property: connectionString
+        fromService:
+          type: web
+          name: talent-bridge-backend
+          envVarKey: DATABASE_URL
       - key: REDIS_URL
-        value: redis://red-xxxxx:6379
+        fromService:
+          type: web
+          name: talent-bridge-backend
+          envVarKey: REDIS_URL
     startCommand: "celery -A backend.talent_bridge worker -l info"
-
-databases:
-  - name: talent-bridge-db
-    databaseName: talent_bridge
-    user: talent_user
-    plan: free
-    ipAllowList: []
