@@ -13,4 +13,6 @@ RUN pip install --upgrade pip && pip install -r requirements.txt
 
 COPY . /app/
 
+RUN SECRET_KEY=build-secret-key python manage.py collectstatic --noinput
+
 CMD ["sh", "-c", "gunicorn talent_bridge.wsgi:application --bind 0.0.0.0:${PORT:-10000}"]
