@@ -1,0 +1,41 @@
+import { Search, Briefcase, ArrowRight, TrendingUp } from 'lucide-react';
+
+export default function Hero() {
+  return (
+    <section className="relative pt-16 pb-20 px-4">
+      {/* Soft radial background glow matching your screenshot */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full bg-[radial-gradient(circle_at_50%_-20%,#e1f2ef,rgba(255,255,255,0))] -z-10" />
+
+      <div className="max-w-7xl mx-auto text-center">
+        {/* Jobs Badge */}
+        <div className="inline-flex items-center gap-2 bg-[#eef6f4] text-[#067a62] px-4 py-1.5 rounded-full text-sm font-semibold mb-10 border border-[#d1e7e2]">
+          <TrendingUp size={16} />
+          12,000+ jobs posted this month
+        </div>
+
+        {/* Hero Title */}
+        <h1 className="text-5xl md:text-7xl font-extrabold text-[#111827] mb-6 tracking-tight">
+          Where Talent Meets <span className="text-[#067a62]">Opportunity</span>
+        </h1>
+
+        <p className="max-w-3xl mx-auto text-[#4b5563] text-lg md:text-xl mb-10 leading-relaxed font-medium">
+          TalentBridge connects exceptional professionals with innovative companies. Whether you 
+          are seeking your next role or building your dream team, this is where great careers begin.
+        </p>
+
+        {/* CTA Buttons */}
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-20">
+          <button className="w-full sm:w-auto flex items-center justify-center gap-2 bg-[#067a62] text-white px-8 py-4 rounded-xl font-bold hover:bg-[#056350] transition-all">
+            <Search size={20} />
+            Find Work
+          </button>
+          <button className="w-full sm:w-auto flex items-center justify-center gap-2 bg-white text-[#111827] border border-[#e5e7eb] px-8 py-4 rounded-xl font-bold hover:bg-[#f9fafb] transition-all">
+            <Briefcase size={20} />
+            Post a Job
+            <ArrowRight size={18} />
+          </button>
+        </div>
+      </div>
+    </section>
+  );
+}
