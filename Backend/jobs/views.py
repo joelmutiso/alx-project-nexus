@@ -49,3 +49,22 @@ class ApplyJobView(generics.CreateAPIView):
 
         # 4. Save
         serializer.save(candidate=self.request.user, job=job)
+
+class JobApplicationsView(generics.ListAPIView):
+    """
+    GET: List all applications for a specific job (Employer only).
+    """
+    serializer_class = ApplicationSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        # 1. Get the Job ID from the URL
+        job_id = self.kwargs.get('pk')
+        job = generics.get_object_or_404(Job, pk=job_id)
+
+        # 2. Security Check: Is the logged-in user the OWNER of this job?
+        if job.employer != self.request.user:
+            raise ValidationError("You do not have permission to view these applications.")
+
+        # 3. Return all applications for this job
+        return Application.objects.filter(job=job).order_by('-created_at')
