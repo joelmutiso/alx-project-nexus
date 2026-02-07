@@ -32,7 +32,7 @@ class Job(models.Model):
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-
+    deadline = models.DateTimeField(null=True, blank=True, help_text="Last date to apply")
     bookmarks = models.ManyToManyField(
         settings.AUTH_USER_MODEL, 
         related_name='bookmarked_jobs', 
@@ -53,7 +53,13 @@ class Application(models.Model):
     cover_letter = models.TextField(blank=True)
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.PENDING)
     created_at = models.DateTimeField(auto_now_add=True)
-
+    resume = models.FileField(
+        upload_to='resumes/%Y/%m/%d/', 
+        null=True, 
+        blank=True,
+        help_text="Upload PDF resume"
+    )
+    
     class Meta:
         unique_together = ('job', 'candidate')
 
@@ -65,3 +71,4 @@ class Application(models.Model):
             raise ValidationError("Cannot accept a previously rejected candidate.")
         self.status = new_status
         self.save()
+

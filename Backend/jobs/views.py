@@ -1,4 +1,4 @@
-from rest_framework import generics, status, permissions
+from rest_framework import generics, status, permissions, parsers
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from .models import Job, Application
 from .serializers import JobSerializer, ApplicationSerializer
@@ -29,11 +29,12 @@ class JobDetailView(generics.RetrieveUpdateDestroyAPIView):
 class ApplyJobView(generics.CreateAPIView):
     serializer_class = ApplicationSerializer
     permission_classes = [permissions.IsAuthenticated]
+    parser_classes = [parsers.MultiPartParser, parsers.FormParser]
 
     def perform_create(self, serializer):
         job_id = self.kwargs.get('pk')
         job = generics.get_object_or_404(Job, pk=job_id)
-
+        
         if not self.request.user.is_candidate:
             raise ValidationError("Only candidates can apply for jobs.")
 
@@ -41,13 +42,15 @@ class ApplyJobView(generics.CreateAPIView):
             raise ValidationError("You have already applied for this job.")
 
         application = serializer.save(candidate=self.request.user, job=job)
-        
-        send_application_notification.delay(
-            job.employer.email, 
-            job.title, 
-            self.request.user.email
-        )
-
+        try:
+            send_application_notification.delay(
+                job.employer.email, 
+                job.title, 
+                self.request.user.email
+            )
+        except Exception as e:
+            print(f"Notification failed but application was saved: {e}")
+            
 class JobApplicationsView(generics.ListAPIView):
     serializer_class = ApplicationSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -93,3 +96,14 @@ class BookmarkJobView(APIView):
         else:
             job.bookmarks.add(request.user)
             return Response({"message": "Job bookmarked"}, status=status.HTTP_201_CREATED)
+        
+class BookmarkedJobsListView(generics.ListAPIView):
+    """
+    GET: List all jobs bookmarked by the logged-in candidate.
+    """
+    serializer_class = JobSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        # We look at the user and return only the jobs they bookmarked
+        return self.request.user.bookmarked_jobs.all()

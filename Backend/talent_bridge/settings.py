@@ -15,11 +15,14 @@ import os
 from dotenv import load_dotenv
 from datetime import timedelta
 from celery import Celery
+from .env_validator import validate_env
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 dotenv_path = BASE_DIR.parent / '.env'
 load_dotenv(dotenv_path)
+
+validate_env()
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
@@ -30,7 +33,7 @@ SECRET_KEY = os.getenv('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv('DEBUG') == 'True'
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0']
 
 
 # Application definition
@@ -43,6 +46,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django_filters',
+    'django_celery_results',
     'drf_yasg',
     'rest_framework',
     'corsheaders',
@@ -157,8 +161,8 @@ REST_FRAMEWORK = {
         'rest_framework.throttling.UserRateThrottle'
     ],
     'DEFAULT_THROTTLE_RATES': {
-        'anon': '100/day',   # Unauthenticated users
-        'user': '1000/day',  # Logged in users
+        'anon': '3/minute',   # Unauthenticated users
+        'user': '5/minute',  # Logged in users
         'burst': '10/minute', # Prevent rapid clicking
     }
 } 
@@ -184,3 +188,50 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
 app = Celery('talent_bridge')
 app.config_from_object('django.conf:settings', namespace='CELERY')
 app.autodiscover_tasks()
+
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": "redis://127.0.0.1:6379/1",
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+        }
+    }
+}
+
+CELERY_BROKER_URL = os.getenv('REDIS_URL', 'redis://127.0.0.1:6379/1')
+CELERY_RESULT_BACKEND = 'django-db' # Stores task results in your Postgres DB
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+
+# This is the "Brain" that runs your Job Expiry every hour
+CELERY_BEAT_SCHEDULE = {
+    'deactivate-jobs-every-hour': {
+        'task': 'jobs.tasks.deactivate_expired_jobs',
+        'schedule': 3600.0, 
+    },
+}
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'json': {
+            '()': 'pythonjsonlogger.jsonlogger.JsonFormatter',
+            'format': '%(asctime)s %(levelname)s %(name)s %(message)s'
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'json',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
+    },
+}
