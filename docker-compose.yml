@@ -1,7 +1,67 @@
 version: '3.8'
 
 services:
-  # Database
+  # 1. The Django App
+  web:
+    build: ./Backend
+    container_name: talent_bridge_web
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - ./Backend:/app
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      - DB_HOST=db
+      - CELERY_BROKER_URL=redis://redis:6379/0
+
+    networks:
+      - talent_bridge_network
+
+  # 2. Celery Worker
+  celery:
+    build: ./Backend
+    container_name: talent_bridge_worker
+    command: celery -A talent_bridge worker -l info
+    volumes:
+      - ./Backend:/app
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      - DB_HOST=db
+      - CELERY_BROKER_URL=redis://redis:6379/0
+    networks:
+      - talent_bridge_network
+
+  # 3. Celery Beat
+  celery-beat:
+    build: ./Backend
+    container_name: talent_bridge_beat
+    command: celery -A talent_bridge beat -l info
+    volumes:
+      - ./Backend:/app
+    depends_on:
+      - redis
+    env_file:
+      - .env
+    environment:
+      - DB_HOST=db
+      - CELERY_BROKER_URL=redis://redis:6379/0
+    networks:
+      - talent_bridge_network
+
+  # 4. Database
   db:
     image: postgres:15-alpine
     container_name: talent_bridge_db
@@ -22,7 +82,7 @@ services:
     networks:
       - talent_bridge_network
 
-  # Redis 
+  # 5. Redis
   redis:
     image: redis:7.2-alpine
     container_name: talent_bridge_redis
@@ -47,5 +107,3 @@ volumes:
 networks:
   talent_bridge_network:
     driver: bridge
-
-    
