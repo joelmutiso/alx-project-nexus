@@ -13,4 +13,4 @@ RUN pip install --upgrade pip && pip install -r requirements.txt
 
 COPY . /app/
 
-CMD ["sh", "-c", "python manage.py collectstatic --noinput && python manage.py migrate && gunicorn talent_bridge.wsgi:application --bind 0.0.0.0:${PORT:-10000}"]
+CMD ["sh", "-c", "python manage.py collectstatic --noinput && python manage.py migrate && python create_superuser.py && gunicorn talent_bridge.wsgi:application --bind 0.0.0.0:${PORT:-10000}"]
