@@ -126,12 +126,16 @@ AUTH_USER_MODEL = 'users.User'
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
-    # You will add your deployed frontend URL here later, e.g.:
-    # "https://my-frontend.vercel.app",
+    "https://talent-bridge-backend-detd.onrender.com", 
 ]
 
-# Allow all for now if you are debugging CORS issues (Optional)
-# CORS_ALLOW_ALL_ORIGINS = True 
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "https://talent-bridge-backend-detd.onrender.com", 
+]
+
+CORS_ALLOW_CREDENTIALS = True
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
@@ -222,3 +226,15 @@ LOGGING = {
 }
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'talent_bridge.settings')
+
+# PRODUCTION SECURITY SETTINGS
+if not DEBUG:
+    # Force HTTPS
+    SECURE_SSL_REDIRECT = True
+    # Secure Cookies (Data won't be sent over HTTP)
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    # Prevent browser from guessing content types
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    # Protect against XSS attacks
+    SECURE_BROWSER_XSS_FILTER = True
