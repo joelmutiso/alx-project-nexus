@@ -1,6 +1,8 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.utils.translation import gettext_lazy as _
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 
 class User(AbstractUser):
     """
@@ -38,3 +40,21 @@ class CandidateProfile(models.Model):
 
     def __str__(self):
         return self.user.email
+    
+@receiver(post_save, sender=User)
+def create_user_profile(sender, instance, created, **kwargs):
+    if instance.is_employer:
+        EmployerProfile.objects.get_or_create(user=instance)
+    elif instance.is_candidate:
+        CandidateProfile.objects.get_or_create(user=instance)
+
+@receiver(post_save, sender=User)
+def save_user_profile(sender, instance, **kwargs):
+    if instance.is_employer:
+        if not hasattr(instance, 'employer_profile'):
+            EmployerProfile.objects.create(user=instance)
+        instance.employer_profile.save()
+    elif instance.is_candidate:
+        if not hasattr(instance, 'candidate_profile'):
+            CandidateProfile.objects.create(user=instance)
+        instance.candidate_profile.save()
