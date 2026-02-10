@@ -11,9 +11,10 @@ class JobSerializer(serializers.ModelSerializer):
             'id', 'title', 'company_name', 'location', 
             'job_type', 'remote_status', 'salary_range',
             'description', 'experience_level', 'salary', 'requirements', 
-            'employer_email', 'days_ago', 'created_at'
+            'employer_email', 'days_ago', 'created_at', 
+            'is_active'  # 👈 ADD THIS!
         ]
-        read_only_fields = ['employer', 'created_at']
+        read_only_fields = ['employer', 'created_at', 'updated_at']
 
         extra_kwargs = {
             'company_name': {'required': False} 
@@ -46,4 +47,20 @@ class ApplicationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Application
         fields = ['id', 'job', 'job_title', 'candidate_email', 'cover_letter', 'resume', 'status', 'created_at']
-        read_only_fields = ['candidate', 'job', 'status', 'created_at']
+        # ⚠️ Note: 'status' is read-only here for Candidates, 
+        # but Employers use a different view (UpdateAPIView) to change it.
+        read_only_fields = ['candidate', 'job', 'created_at'] 
+
+class JobSummarySerializer(serializers.ModelSerializer):
+    """Simple serializer to show job details inside an application"""
+    class Meta:
+        model = Job
+        fields = ['id', 'title', 'company_name', 'location', 'job_type', 'remote_status']
+
+class CandidateApplicationSerializer(serializers.ModelSerializer):
+    """Serializer for candidates to see their own applications"""
+    job = JobSummarySerializer(read_only=True) 
+    
+    class Meta:
+        model = Application
+        fields = ['id', 'job', 'status', 'created_at', 'cover_letter']

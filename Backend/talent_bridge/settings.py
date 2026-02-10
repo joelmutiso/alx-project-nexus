@@ -148,6 +148,8 @@ REST_FRAMEWORK = {
         'django_filters.rest_framework.DjangoFilterBackend',
         'rest_framework.filters.SearchFilter',
     ),
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 10, 
     'DEFAULT_THROTTLE_CLASSES': [
         'rest_framework.throttling.AnonRateThrottle',
         'rest_framework.throttling.UserRateThrottle'
@@ -158,7 +160,7 @@ REST_FRAMEWORK = {
         'burst': '20/minute',
         'registration': '5/hour',
     }
-} 
+}
 
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),  
@@ -178,7 +180,7 @@ SWAGGER_SETTINGS = {
 }
 
 # Celery Configuration
-CELERY_BROKER_URL = os.getenv('REDIS_URL', 'redis://127.0.0.1:6379/1')
+CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL', 'redis://127.0.0.1:6379/0')
 CELERY_RESULT_BACKEND = 'django-db'
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
@@ -190,7 +192,7 @@ CELERY_BEAT_SCHEDULE = {
     },
 }
 
-
+# 2. Caching Configuration
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",

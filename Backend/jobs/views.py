@@ -1,7 +1,7 @@
 from rest_framework import generics, status, permissions, parsers, filters
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from .models import Job, Application
-from .serializers import JobSerializer, ApplicationSerializer
+from .serializers import JobSerializer, ApplicationSerializer, CandidateApplicationSerializer
 from .permissions import IsEmployerOrReadOnly, IsOwnerOrReadOnly
 from rest_framework.exceptions import ValidationError
 from django_filters.rest_framework import DjangoFilterBackend
@@ -12,15 +12,12 @@ from .filters import JobFilter
 
 class JobListCreateView(generics.ListCreateAPIView):
     queryset = Job.objects.select_related('employer').filter(is_active=True).order_by('-created_at')
+
     serializer_class = JobSerializer
     permission_classes = [IsAuthenticatedOrReadOnly, IsEmployerOrReadOnly]
-    
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    
     filterset_class = JobFilter 
-    
     search_fields = ['title', 'description', 'requirements', 'company_name']
-
     ordering_fields = ['created_at', 'salary']
 
     def perform_create(self, serializer):
@@ -46,7 +43,8 @@ class ApplyJobView(generics.CreateAPIView):
         if Application.objects.filter(job=job, candidate=self.request.user).exists():
             raise ValidationError("You have already applied for this job.")
 
-        application = serializer.save(candidate=self.request.user, job=job)
+        serializer.save(candidate=self.request.user, job=job, status='PENDING')
+        
         try:
             send_application_notification.delay(
                 job.employer.email, 
@@ -110,5 +108,22 @@ class BookmarkedJobsListView(generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        # We look at the user and return only the jobs they bookmarked
         return self.request.user.bookmarked_jobs.all()
+    
+class CandidateApplicationsListView(generics.ListAPIView):
+    serializer_class = CandidateApplicationSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return Application.objects.filter(candidate=self.request.user).order_by('-created_at')
+    
+class EmployerJobListView(generics.ListAPIView):
+    """
+    GET: List ALL jobs posted by the logged-in employer (Active & Inactive).
+    Used for the Employer Dashboard.
+    """
+    serializer_class = JobSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return Job.objects.filter(employer=self.request.user).order_by('-created_at')

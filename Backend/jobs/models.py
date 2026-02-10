@@ -1,20 +1,19 @@
 from django.db import models
 from django.conf import settings
-from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 
 class Job(models.Model):
     class JobType(models.TextChoices):
-        FULL_TIME = 'FT', 'Full Time'
-        PART_TIME = 'PT', 'Part Time'
-        CONTRACT = 'CT', 'Contract'
-        FREELANCE = 'FL', 'Freelance'
-        INTERNSHIP = 'IN', 'Internship'
+        FULL_TIME = 'Full-Time', 'Full-Time'
+        PART_TIME = 'Part-Time', 'Part-Time'
+        CONTRACT = 'Contract', 'Contract'
+        FREELANCE = 'Freelance', 'Freelance'
+        INTERNSHIP = 'Internship', 'Internship'
 
     class RemoteStatus(models.TextChoices):
-        ONSITE = 'ON', 'On-site'
-        REMOTE = 'RE', 'Remote'
-        HYBRID = 'HY', 'Hybrid'
+        ONSITE = 'On-site', 'On-site'
+        REMOTE = 'Remote', 'Remote'
+        HYBRID = 'Hybrid', 'Hybrid'
 
     class ExperienceLevel(models.TextChoices):
         JUNIOR = 'Junior', 'Junior (0-2 years)'
@@ -35,18 +34,21 @@ class Job(models.Model):
     )
     
     title = models.CharField(max_length=255)
-    company_name = models.CharField(max_length=255, help_text="Auto-filled from Employer Profile if left blank")
+    company_name = models.CharField(max_length=255, help_text="Auto-filled from Employer Profile")
     description = models.TextField()
-    requirements = models.TextField(help_text="Key skills required")
+    requirements = models.TextField()
     location = models.CharField(max_length=100)
-    salary_range = models.CharField(max_length=100, blank=True, help_text="e.g. $50k - $70k")
-    salary = models.PositiveIntegerField(default=0, help_text="Numeric value for sorting/filtering")
-    job_type = models.CharField(max_length=2, choices=JobType.choices, default=JobType.FULL_TIME)
-    remote_status = models.CharField(max_length=2, choices=RemoteStatus.choices, default=RemoteStatus.ONSITE)
+    salary_range = models.CharField(max_length=100, blank=True)
+    salary = models.PositiveIntegerField(default=0)
+    
+    job_type = models.CharField(max_length=50, choices=JobType.choices, default=JobType.FULL_TIME)
+    remote_status = models.CharField(max_length=50, choices=RemoteStatus.choices, default=RemoteStatus.ONSITE)
+    
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    deadline = models.DateTimeField(null=True, blank=True, help_text="Last date to apply")
+    deadline = models.DateTimeField(null=True, blank=True)
+    
     bookmarks = models.ManyToManyField(
         settings.AUTH_USER_MODEL, 
         related_name='bookmarked_jobs', 
@@ -67,22 +69,14 @@ class Application(models.Model):
     cover_letter = models.TextField(blank=True)
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.PENDING)
     created_at = models.DateTimeField(auto_now_add=True)
-    resume = models.FileField(
-        upload_to='resumes/%Y/%m/%d/', 
-        null=True, 
-        blank=True,
-        help_text="Upload PDF resume"
-    )
+    resume = models.FileField(upload_to='resumes/%Y/%m/%d/', null=True, blank=True)
     
     class Meta:
         unique_together = ('job', 'candidate')
 
     def __str__(self):
         return f"{self.candidate.email} applied to {self.job.title}"
-
+    
     def transition_to(self, new_status):
-        if self.status == self.Status.REJECTED and new_status == self.Status.ACCEPTED:
-            raise ValidationError("Cannot accept a previously rejected candidate.")
         self.status = new_status
         self.save()
-
