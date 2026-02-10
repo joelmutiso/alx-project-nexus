@@ -7,6 +7,7 @@ from .views import (
     CustomLoginView
 )
 from rest_framework_simplejwt.views import TokenRefreshView
+from .views import GoogleLogin
 
 urlpatterns = [
     # Auth & Registration
@@ -20,4 +21,6 @@ urlpatterns = [
     # Profiles
     path('me/', UserDetailsView.as_view(), name='user-details'),
     path('employer/profile/', EmployerProfileUpdateView.as_view(), name='employer-profile-update'),
+
+    path('google/', GoogleLogin.as_view(), name='google_login'),
 ]

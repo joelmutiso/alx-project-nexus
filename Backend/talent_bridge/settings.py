@@ -56,7 +56,21 @@ INSTALLED_APPS = [
     'corsheaders',
     'users',
     'jobs',
+
+    'rest_framework.authtoken',
+    
+    # OAUTH:
+    'dj_rest_auth',
+    'django.contrib.sites', 
+    'allauth',
+    'allauth.account',
+    'allauth.socialaccount',
+    'dj_rest_auth.registration',
+    
+    'allauth.socialaccount.providers.google',
 ]
+
+SITE_ID = 1
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -66,6 +80,9 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+
+    'allauth.account.middleware.AccountMiddleware',
+
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -126,7 +143,9 @@ AUTH_USER_MODEL = 'users.User'
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
-    "https://talent-bridge-backend-detd.onrender.com", 
+    "https://talent-bridge-backend-detd.onrender.com",
+    "http://localhost",
+    "http://127.0.0.1",
 ]
 
 CSRF_TRUSTED_ORIGINS = [
@@ -227,7 +246,6 @@ LOGGING = {
     },
 }
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'talent_bridge.settings')
 
 # PRODUCTION SECURITY SETTINGS
 if not DEBUG:
@@ -240,3 +258,26 @@ if not DEBUG:
     SECURE_CONTENT_TYPE_NOSNIFF = True
     # Protect against XSS attacks
     SECURE_BROWSER_XSS_FILTER = True
+
+# --- django-allauth Configuration ---
+ACCOUNT_AUTHENTICATION_METHOD = 'email'
+ACCOUNT_EMAIL_REQUIRED = True
+ACCOUNT_USERNAME_REQUIRED = False
+ACCOUNT_EMAIL_VERIFICATION = 'none'
+
+# --- Social Login Providers ---
+SOCIALACCOUNT_PROVIDERS = {
+    'google': {
+        'SCOPE': [
+            'profile',
+            'email',
+        ],
+        'AUTH_PARAMS': {
+            'access_type': 'online',
+        }
+    }
+}
+
+
+REST_USE_JWT = True
+JWT_AUTH_COOKIE = 'talent-bridge-auth'

@@ -18,9 +18,9 @@ services:
     env_file:
       - .env
     environment:
-      - DB_HOST=db
+      - DATABASE_URL=postgres://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
       - CELERY_BROKER_URL=redis://redis:6379/0
-
+      - REDIS_URL=redis://redis:6379/1
     networks:
       - talent_bridge_network
 
@@ -39,8 +39,9 @@ services:
     env_file:
       - .env
     environment:
-      - DB_HOST=db
+      - DATABASE_URL=postgres://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
       - CELERY_BROKER_URL=redis://redis:6379/0
+      - REDIS_URL=redis://redis:6379/1
     networks:
       - talent_bridge_network
 
@@ -53,11 +54,13 @@ services:
       - ./Backend:/app
     depends_on:
       - redis
+      - db
     env_file:
       - .env
     environment:
-      - DB_HOST=db
+      - DATABASE_URL=postgres://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
       - CELERY_BROKER_URL=redis://redis:6379/0
+      - REDIS_URL=redis://redis:6379/1
     networks:
       - talent_bridge_network
 
