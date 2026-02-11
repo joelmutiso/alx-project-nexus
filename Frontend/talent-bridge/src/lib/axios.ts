@@ -1,21 +1,21 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: 'https://talent-bridge-backend-detd.onrender.com/api/v1/',
+  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1/',
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-// 🚀 THE FIX: This "Interceptor" runs before EVERY request
 api.interceptors.request.use(
   (config) => {
-    // Look for the token in local storage right now
-    const token = localStorage.getItem('token') || localStorage.getItem('access_token');
+    // We standardized on 'access_token' in our previous dashboard code
+    const token = localStorage.getItem('access_token') || localStorage.getItem('token');
     
     if (token) {
-      // Attach the fresh token to the header
-      config.headers.Authorization = `Bearer ${token}`;
+      // Standard JWTs (which your Django backend uses) use 'Bearer'
+      const authPrefix = token.includes('.') ? 'Bearer' : 'Token';
+      config.headers.Authorization = `${authPrefix} ${token}`;
     }
     
     return config;

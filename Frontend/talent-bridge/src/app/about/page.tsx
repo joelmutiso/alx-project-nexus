@@ -25,8 +25,6 @@ export default function AboutPage() {
               Whether you are a startup looking for your first engineer or a candidate searching for your dream remote role, we provide the tools, transparency, and speed you need.
             </p>
             
-            {/* 🚀 REMOVED: "Join our community" link is gone. */}
-            
           </div>
           
           {/* 🚀 ADDED: Real Images from Unsplash */}
@@ -57,7 +55,7 @@ export default function AboutPage() {
         </div>
       </div>
 
-      {/* 🚀 ADDED: Call to Action Section (Matching your screenshot) */}
+      {/* Call to Action Section */}
       <div className="py-20 px-4">
         <div className="max-w-5xl mx-auto bg-[#0f172a] rounded-3xl p-12 text-center shadow-2xl relative overflow-hidden">
             {/* Decorative background blur */}

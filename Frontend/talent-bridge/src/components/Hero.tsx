@@ -7,8 +7,6 @@ export default function Hero() {
     <div className="relative w-full min-h-screen flex items-center pt-20 overflow-hidden bg-[#0f172a]">
       {/* Background Image Overlay */}
       <div className="absolute inset-0 z-0 opacity-20">
-        {/* 🚀 FIX: Using a reliable online image URL to guarantee it works for your demo. 
-            This avoids all local file path/extension issues. */}
         <img 
           src="https://images.unsplash.com/photo-1497215728101-856f4ea42174?q=80&w=2070&auto=format&fit=crop" 
           alt="Office Background" 
@@ -35,7 +33,6 @@ export default function Hero() {
 
           {/* Action Buttons */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-            {/* 1. Browse Jobs -> /jobs */}
             <Link 
               href="/jobs" 
               className="px-8 py-4 bg-[#067a62] hover:bg-[#056350] text-white rounded-xl font-bold text-lg transition-all shadow-lg shadow-emerald-900/20 flex items-center justify-center gap-2"
@@ -44,9 +41,8 @@ export default function Hero() {
               Browse Jobs
             </Link>
             
-            {/* 2. Post a Job -> /post-job */}
             <Link 
-              href="/post-job" 
+              href="/employer/jobs/create" 
               className="px-8 py-4 bg-white hover:bg-gray-100 text-gray-900 rounded-xl font-bold text-lg transition-all flex items-center justify-center gap-2"
             >
               Post a Job
@@ -62,7 +58,7 @@ export default function Hero() {
         {/* Right Content (Floating Card) */}
         <div className="flex-1 hidden lg:block relative">
            <div className="relative w-full max-w-lg mx-auto bg-gradient-to-tr from-emerald-500/20 to-blue-500/20 rounded-2xl p-8 backdrop-blur-sm border border-white/10">
-              <div className="bg-white rounded-xl p-6 shadow-xl mb-4 transform -rotate-2">
+             <div className="bg-white rounded-xl p-6 shadow-xl mb-4 transform -rotate-2">
                  <div className="flex items-center justify-between mb-4">
                     <div className="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center text-indigo-600 font-bold">M</div>
                     <span className="text-emerald-600 font-bold bg-emerald-50 px-2 py-1 rounded text-xs">Active</span>
@@ -75,7 +71,6 @@ export default function Hero() {
                        <div className="w-8 h-8 rounded-full bg-gray-300 border-2 border-white"></div>
                        <div className="w-8 h-8 rounded-full bg-gray-400 border-2 border-white"></div>
                     </div>
-                    {/* 3. Get Started Free -> /register */}
                     <Link href="/register" className="text-sm font-bold text-[#067a62] hover:underline">Get Started Free &rarr;</Link>
                  </div>
               </div>

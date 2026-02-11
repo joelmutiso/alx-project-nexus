@@ -1,15 +1,38 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { LogIn, UserPlus, Briefcase } from 'lucide-react';
+import { usePathname, useRouter } from 'next/navigation';
+import { LogIn, UserPlus, Briefcase, LogOut, LayoutDashboard } from 'lucide-react';
 
 export default function Navbar() {
   const pathname = usePathname();
-  const isHomePage = pathname === '/';
+  const router = useRouter();
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userRole, setUserRole] = useState<string | null>(null);
+
+  // Check auth status on mount and when pathname changes
+  useEffect(() => {
+    const token = localStorage.getItem('access_token');
+    const role = localStorage.getItem('user_role');
+    setIsLoggedIn(!!token);
+    setUserRole(role);
+  }, [pathname]);
+
+  const handleLogout = () => {
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
+    localStorage.removeItem('user_role');
+    localStorage.removeItem('user_first_name');
+    setIsLoggedIn(false);
+    router.push('/');
+  };
+
+  const hideEntireNavbar = ['/login', '/register', '/onboarding', '/google-sync', '/forgot-password', '/reset-password-confirm'].includes(pathname);
   
-  // 🚀 UPDATED: Added '/about' to the list of pages hiding auth buttons
-  const hideAuthButtons = ['/jobs', '/post-job', '/about'].includes(pathname);
+  if (hideEntireNavbar) return null;
+
+  const isHomePage = pathname === '/';
 
   return (
     <nav 
@@ -32,52 +55,61 @@ export default function Navbar() {
             </span>
           </Link>
 
-          {/* Center Links */}
+          {/* Dynamic Center Links */}
           <div className="hidden md:flex space-x-8 items-center">
-            {[
-              { name: 'Find Work', href: '/jobs' },
-              { name: 'Post a Job', href: '/post-job' },
-              { name: 'Candidate', href: '/candidate' },
-              { name: 'Employer', href: '/employer' },
-            ].map((link) => (
+            <Link 
+              href="/jobs" 
+              className={`text-[15px] font-medium transition-colors ${isHomePage ? 'text-white/90 hover:text-white' : 'text-gray-600 hover:text-[#067a62]'}`}
+            >
+              Find Work
+            </Link>
+            <Link 
+              href="/employer/jobs/create" 
+              className={`text-[15px] font-medium transition-colors ${isHomePage ? 'text-white/90 hover:text-white' : 'text-gray-600 hover:text-[#067a62]'}`}
+            >
+              Post a Job
+            </Link>
+            
+            {isLoggedIn && (
               <Link 
-                key={link.name}
-                href={link.href} 
-                className={`text-[15px] font-medium transition-colors ${
-                  isHomePage 
-                    ? 'text-white/90 hover:text-white' 
-                    : 'text-gray-600 hover:text-[#067a62]'
-                }`}
+                href={userRole === 'employer' ? '/employer' : '/candidate'} 
+                className={`text-[15px] font-medium transition-colors ${isHomePage ? 'text-white/90 hover:text-white' : 'text-gray-600 hover:text-[#067a62]'}`}
               >
-                {link.name}
+                Dashboard
               </Link>
-            ))}
+            )}
           </div>
 
-          {/* Right Actions - Hidden on /jobs, /post-job, and /about */}
-          {!hideAuthButtons && (
-            <div className="flex items-center gap-6">
-              <Link 
-                href="/login" 
-                className={`flex items-center gap-2 text-[15px] font-semibold transition-colors ${
-                  isHomePage 
-                    ? 'text-white hover:text-emerald-300' 
-                    : 'text-gray-700 hover:text-[#067a62]'
-                }`}
-              >
-                <LogIn size={18} />
-                Log In
-              </Link>
+          {/* Right Actions */}
+          <div className="flex items-center gap-4">
+            {!isLoggedIn ? (
+              <>
+                <Link 
+                  href="/login" 
+                  className={`flex items-center gap-2 text-[15px] font-semibold transition-colors ${isHomePage ? 'text-white hover:text-emerald-300' : 'text-gray-700 hover:text-[#067a62]'}`}
+                >
+                  <LogIn size={18} />
+                  <span className="hidden sm:inline">Log In</span>
+                </Link>
 
-              <Link 
-                href="/register" 
-                className="flex items-center gap-2 bg-[#067a62] text-white px-5 py-2.5 rounded-xl text-[15px] font-bold hover:bg-[#056350] transition-all shadow-md active:scale-95"
+                <Link 
+                  href="/register" 
+                  className="flex items-center gap-2 bg-[#067a62] text-white px-5 py-2.5 rounded-xl text-[15px] font-bold hover:bg-[#056350] transition-all shadow-md active:scale-95"
+                >
+                  <UserPlus size={18} />
+                  <span className="hidden sm:inline">Sign Up</span>
+                </Link>
+              </>
+            ) : (
+              <button 
+                onClick={handleLogout}
+                className={`flex items-center gap-2 text-[15px] font-semibold transition-colors ${isHomePage ? 'text-white hover:text-red-300' : 'text-gray-700 hover:text-red-600'}`}
               >
-                <UserPlus size={18} />
-                Sign Up
-              </Link>
-            </div>
-          )}
+                <LogOut size={18} />
+                <span className="hidden sm:inline">Logout</span>
+              </button>
+            )}
+          </div>
 
         </div>
       </div>
