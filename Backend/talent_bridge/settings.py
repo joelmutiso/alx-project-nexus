@@ -146,6 +146,7 @@ CORS_ALLOWED_ORIGINS = [
     "https://talent-bridge-backend-detd.onrender.com",
     "http://localhost",
     "http://127.0.0.1",
+    "https://alx-project-nexus-silk.vercel.app",
 ]
 
 CSRF_TRUSTED_ORIGINS = [
