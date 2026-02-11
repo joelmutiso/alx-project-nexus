@@ -32,7 +32,8 @@ class ApplyJobView(generics.CreateAPIView):
     serializer_class = ApplicationSerializer
     permission_classes = [permissions.IsAuthenticated]
     parser_classes = [parsers.MultiPartParser, parsers.FormParser]
-
+    queryset = Application.objects.none()
+    
     def perform_create(self, serializer):
         job_id = self.kwargs.get('pk')
         job = generics.get_object_or_404(Job, pk=job_id)
@@ -59,6 +60,10 @@ class JobApplicationsView(generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
+
+        if getattr(self, 'swagger_fake_view', False):
+            return Application.objects.none()
+        
         job_id = self.kwargs.get('pk')
         job = generics.get_object_or_404(Job, pk=job_id)
 
