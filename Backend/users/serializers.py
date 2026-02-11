@@ -106,7 +106,8 @@ class APIPasswordResetSerializer(PasswordResetSerializer):
         request = self.context.get('request')
         email = self.validated_data.get('email')
         
-        users = self.get_users(email)
+        # Query the active user directly from the database
+        users = User.objects.filter(email__iexact=email, is_active=True)
         
         for user in users:
             uid = urlsafe_base64_encode(force_bytes(user.pk))
