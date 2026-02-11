@@ -278,6 +278,13 @@ SOCIALACCOUNT_PROVIDERS = {
     }
 }
 
+REST_AUTH = {
+    'USE_JWT': True,
+    'JWT_AUTH_COOKIE': 'talentbridge-auth',
+    'JWT_AUTH_REFRESH_COOKIE': 'talentbridge-refresh',
+}
 
 REST_USE_JWT = True
 JWT_AUTH_COOKIE = 'talent-bridge-auth'
+
+
