@@ -282,9 +282,17 @@ REST_AUTH = {
     'USE_JWT': True,
     'JWT_AUTH_COOKIE': 'talentbridge-auth',
     'JWT_AUTH_REFRESH_COOKIE': 'talentbridge-refresh',
+    'PASSWORD_RESET_SERIALIZER': 'users.serializers.APIPasswordResetSerializer',
 }
 
 REST_USE_JWT = True
 JWT_AUTH_COOKIE = 'talent-bridge-auth'
 
-
+# --- Email Settings Feature ---
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = os.environ.get('EMAIL_USER')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_PASSWORD')
+DEFAULT_FROM_EMAIL = f"TalentBridge <{os.environ.get('EMAIL_USER')}>"

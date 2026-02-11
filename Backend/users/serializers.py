@@ -3,6 +3,14 @@ from django.contrib.auth import get_user_model
 from .models import EmployerProfile, CandidateProfile
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
+# API Password Reset Feature Imports
+from dj_rest_auth.serializers import PasswordResetSerializer
+from django.contrib.auth.tokens import default_token_generator
+from django.utils.http import urlsafe_base64_encode
+from django.utils.encoding import force_bytes
+from django.core.mail import send_mail
+from django.conf import settings
+
 User = get_user_model()
 
 # --- Profile Serializers ---
@@ -91,3 +99,37 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         data['is_candidate'] = self.user.is_candidate
         
         return data
+
+# --- API Password Reset Serializer Feature ---
+class APIPasswordResetSerializer(PasswordResetSerializer):
+    def save(self):
+        request = self.context.get('request')
+        email = self.validated_data.get('email')
+        
+        users = self.get_users(email)
+        
+        for user in users:
+            uid = urlsafe_base64_encode(force_bytes(user.pk))
+            token = default_token_generator.make_token(user)
+            
+            reset_url = f"http://localhost:3000/reset-password-confirm/{uid}/{token}"
+            
+            message = f"""Hello,
+
+You requested a password reset for your TalentBridge account.
+Please click the link below to set a new password:
+
+{reset_url}
+
+If you didn't request this, you can safely ignore this email.
+
+Best,
+The TalentBridge Team"""
+
+            send_mail(
+                subject="Password Reset for TalentBridge",
+                message=message,
+                from_email=getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@talentbridge.local'),
+                recipient_list=[user.email],
+                fail_silently=False,
+            )
