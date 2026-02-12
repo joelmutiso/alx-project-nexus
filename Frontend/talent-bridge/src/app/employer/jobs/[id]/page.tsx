@@ -1,24 +1,27 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { 
-  Briefcase, MapPin, ArrowLeft, 
-  Users, Loader2, AlertCircle, FileText, Mail,
-  CheckCircle, XCircle, DollarSign, ExternalLink
+  Building2, MapPin, ArrowLeft, 
+  Users, Loader2, FileText, Mail,
+  CheckCircle, XCircle, DollarSign, TrendingUp // Imported correctly
 } from 'lucide-react';
 import api from '@/lib/axios';
 
 export default function HiringManagementPage() {
-  const { id } = useParams();
+  const params = useParams();
+  const id = params?.id;
+  
   const [job, setJob] = useState<any>(null);
   const [applicants, setApplicants] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<number | null>(null);
-  const [error, setError] = useState('');
 
-  const fetchData = async () => {
+  // Moved fetchData inside useCallback to be used in useEffect and after updates
+  const fetchData = useCallback(async () => {
+    if (!id) return;
     try {
       const [jobRes, appRes] = await Promise.all([
         api.get(`jobs/${id}/`),
@@ -29,15 +32,15 @@ export default function HiringManagementPage() {
       setApplicants(appData);
     } catch (err: any) {
       console.error("Fetch Error:", err);
-      setError("Could not load data from TalentBridge.");
+      // Optional: Set an error state here if needed
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
 
   useEffect(() => {
-    if (id) fetchData();
-  }, [id]);
+    fetchData();
+  }, [fetchData]);
 
   const handleStatusUpdate = async (applicationId: number, newStatus: string) => {
     setUpdatingId(applicationId);
@@ -45,6 +48,7 @@ export default function HiringManagementPage() {
       await api.patch(`jobs/applications/${applicationId}/`, { 
         status: newStatus 
       });
+      // Refresh data to show new status
       await fetchData(); 
     } catch (err: any) {
       console.error("Update Error:", err.response?.data);
@@ -63,6 +67,16 @@ export default function HiringManagementPage() {
     );
   }
 
+  // If loading is done but no job found
+  if (!job) {
+     return (
+        <div className="flex flex-col items-center justify-center py-20 min-h-screen">
+          <h2 className="text-2xl font-bold text-gray-700">Job Not Found</h2>
+          <Link href="/employer" className="mt-4 text-[#067a62] hover:underline">Back to Dashboard</Link>
+        </div>
+     );
+  }
+
   return (
     <div className="min-h-screen bg-[#fafafa] pb-20">
       <div className="max-w-6xl mx-auto px-4 md:px-8 py-10">
@@ -77,6 +91,7 @@ export default function HiringManagementPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
           <div className="lg:col-span-2 space-y-8">
+            {/* Job Header Card */}
             <div className="bg-white p-6 md:p-10 rounded-3xl border border-gray-100 shadow-sm">
               <div className="border-b border-gray-50 pb-8 mb-8">
                 <div className="flex justify-between items-start mb-4">
@@ -121,6 +136,7 @@ export default function HiringManagementPage() {
               </div>
             </div>
 
+            {/* Applicants List */}
             <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
               <div className="p-6 md:p-8 border-b border-gray-50 flex items-center justify-between">
                 <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
@@ -155,24 +171,27 @@ export default function HiringManagementPage() {
                       </div>
 
                       <div className="flex items-center gap-3 w-full md:w-auto">
+                        {/* Accept Button */}
                         <button 
                           onClick={() => handleStatusUpdate(app.id, 'Accepted')}
                           disabled={updatingId === app.id || app.status.toLowerCase().includes('accept')}
-                          className="flex-1 md:flex-none flex items-center justify-center gap-2 text-xs font-bold text-white bg-[#067a62] px-5 py-2.5 rounded-xl hover:bg-[#056350] disabled:opacity-30 transition-all shadow-md active:scale-95"
+                          className="flex-1 md:flex-none flex items-center justify-center gap-2 text-xs font-bold text-white bg-[#067a62] px-5 py-2.5 rounded-xl hover:bg-[#056350] disabled:opacity-30 disabled:bg-gray-300 transition-all shadow-md active:scale-95"
                         >
                           {updatingId === app.id ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle size={14} />} 
                           Accept
                         </button>
                         
+                        {/* Reject Button */}
                         <button 
                           onClick={() => handleStatusUpdate(app.id, 'Rejected')}
                           disabled={updatingId === app.id || app.status.toLowerCase().includes('reject')}
-                          className="flex-1 md:flex-none flex items-center justify-center gap-2 text-xs font-bold text-gray-700 bg-gray-50 px-5 py-2.5 rounded-xl border border-gray-200 hover:bg-red-50 hover:text-red-700 hover:border-red-100 disabled:opacity-30 transition-all active:scale-95"
+                          className="flex-1 md:flex-none flex items-center justify-center gap-2 text-xs font-bold text-gray-700 bg-gray-50 px-5 py-2.5 rounded-xl border border-gray-200 hover:bg-red-50 hover:text-red-700 hover:border-red-100 disabled:opacity-50 transition-all active:scale-95"
                         >
                           {updatingId === app.id ? <Loader2 size={14} className="animate-spin" /> : <XCircle size={14} />} 
                           Reject
                         </button>
 
+                        {/* Resume Link */}
                         {app.resume && (
                           <a href={app.resume} target="_blank" rel="noopener noreferrer" className="p-3 text-gray-400 hover:text-[#067a62] hover:bg-emerald-50 rounded-xl border border-gray-100 transition-colors" title="View Resume">
                             <FileText size={20} />
@@ -214,18 +233,5 @@ export default function HiringManagementPage() {
         </div>
       </div>
     </div>
-  );
-}
-
-// Simple Helper for layout
-function Building2(props: any) {
-  return (
-    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-building-2"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></svg>
-  );
-}
-
-function TrendingUp(props: any) {
-  return (
-    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-trending-up"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
   );
 }
