@@ -1,14 +1,15 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react'; // Added useEffect here
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Send, Loader2, AlertCircle, CheckCircle, Briefcase, MapPin, DollarSign, FileText, ListChecks, Building2 } from 'lucide-react';
+import { ArrowLeft, Send, Loader2, AlertCircle, CheckCircle } from 'lucide-react';
 import Link from 'next/link';
 import api from '@/lib/axios';
 
 export default function CreateJobPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [isAuthorized, setIsAuthorized] = useState(false); // New state to handle loading while checking auth
   const [errorMsg, setErrorMsg] = useState('');
   const [success, setSuccess] = useState(false);
   
@@ -23,6 +24,21 @@ export default function CreateJobPage() {
     remote_status: 'Remote', 
     experience_level: 'Mid'
   });
+
+  // 👇 ADDED: Authentication Check
+  useEffect(() => {
+    // Check for the token in local storage
+    // MAKE SURE this matches the key you used in your Login page!
+    const token = localStorage.getItem('token') || localStorage.getItem('access');
+    
+    if (!token) {
+      // If no token, redirect to login immediately
+      router.push('/login?redirect=/employer/jobs/create');
+    } else {
+      // If token exists, allow the page to show
+      setIsAuthorized(true);
+    }
+  }, [router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -67,6 +83,15 @@ export default function CreateJobPage() {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
+
+  // 👇 ADDED: Loading screen while checking auth
+  if (!isAuthorized) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
+        <Loader2 className="animate-spin text-[#067a62]" size={40} />
+      </div>
+    );
+  }
 
   if (success) {
     return (
