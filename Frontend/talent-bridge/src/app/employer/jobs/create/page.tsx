@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react'; // Added useEffect here
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Send, Loader2, AlertCircle, CheckCircle } from 'lucide-react';
 import Link from 'next/link';
@@ -9,7 +9,7 @@ import api from '@/lib/axios';
 export default function CreateJobPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [isAuthorized, setIsAuthorized] = useState(false); // New state to handle loading while checking auth
+  const [isAuthorized, setIsAuthorized] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [success, setSuccess] = useState(false);
   
@@ -25,17 +25,14 @@ export default function CreateJobPage() {
     experience_level: 'Mid'
   });
 
-  // 👇 ADDED: Authentication Check
+  // 👇 AUTH CHECK: Updated to use 'access_token'
   useEffect(() => {
-    // Check for the token in local storage
-    // MAKE SURE this matches the key you used in your Login page!
-    const token = localStorage.getItem('token') || localStorage.getItem('access');
+    // We check specifically for 'access_token' based on your browser data
+    const token = localStorage.getItem('access_token');
     
     if (!token) {
-      // If no token, redirect to login immediately
       router.push('/login?redirect=/employer/jobs/create');
     } else {
-      // If token exists, allow the page to show
       setIsAuthorized(true);
     }
   }, [router]);
@@ -46,7 +43,6 @@ export default function CreateJobPage() {
     setErrorMsg('');
     
     try {
-      // 🚀 Payload cleanup: Ensuring types match exactly what Postman showed
       const payload = {
         title: formData.title,
         company_name: formData.company_name,
@@ -69,11 +65,10 @@ export default function CreateJobPage() {
       
     } catch (err: any) {
       console.error("Submission Error Details:", err.response?.data);
-      
       if (err.response?.status === 500) {
-        setErrorMsg("Server Error (500): The database rejected this job. This usually happens if the backend is missing the 'employer' link during save.");
+        setErrorMsg("Server Error (500). Please try again later.");
       } else {
-        setErrorMsg(err.response?.data?.detail || JSON.stringify(err.response?.data) || "An unexpected error occurred.");
+        setErrorMsg(err.response?.data?.detail || "An unexpected error occurred.");
       }
     } finally {
       setLoading(false);
@@ -84,7 +79,7 @@ export default function CreateJobPage() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  // 👇 ADDED: Loading screen while checking auth
+  // Prevent flashing the form if not authorized
   if (!isAuthorized) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">

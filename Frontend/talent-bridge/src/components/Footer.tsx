@@ -31,6 +31,8 @@ export default function Footer() {
             <h4 className="font-bold text-gray-900 mb-6">For Candidates</h4>
             <ul className="space-y-4 text-sm text-gray-500">
               <li><Link href="/jobs" className="hover:text-[#067a62] transition-colors">Find Work</Link></li>
+              <li><Link href="/post-job" className="hover:text-[#067a62] transition-colors">Dashboard</Link></li>
+              <li><Link href="/post-job" className="hover:text-[#067a62] transition-colors">Create Account</Link></li>
             </ul>
           </div>
 
@@ -39,6 +41,8 @@ export default function Footer() {
             <h4 className="font-bold text-gray-900 mb-6">For Employers</h4>
             <ul className="space-y-4 text-sm text-gray-500">
               <li><Link href="/post-job" className="hover:text-[#067a62] transition-colors">Post a Job</Link></li>
+              <li><Link href="/post-job" className="hover:text-[#067a62] transition-colors">Dashboard</Link></li>
+              <li><Link href="/post-job" className="hover:text-[#067a62] transition-colors">Get Started</Link></li>
             </ul>
           </div>
 
@@ -46,8 +50,9 @@ export default function Footer() {
           <div>
             <h4 className="font-bold text-gray-900 mb-6">Company</h4>
             <ul className="space-y-4 text-sm text-gray-500">
-              {/* 🚀 REMOVED: Blog link */}
               <li><Link href="/about" className="hover:text-[#067a62] transition-colors">About Us</Link></li>
+              <li><Link href="/about" className="hover:text-[#067a62] transition-colors">Contact</Link></li>
+              <li><Link href="/about" className="hover:text-[#067a62] transition-colors">Privacy Policy</Link></li>
             </ul>
           </div>
 
