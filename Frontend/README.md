@@ -216,19 +216,3 @@ git push origin feature/your-feature
 MIT License - see [LICENSE](LICENSE) file
 
 ---
-
-## 📞 Contact
-
-- **Repository:** [github.com/yourusername/talentbridge-frontend](https://github.com/yourusername/talentbridge-frontend)
-- **Issues:** [Report Bug](https://github.com/yourusername/talentbridge-frontend/issues)
-- **Email:** support@talentbridge.com
-
----
-
-<div align="center">
-
-**Built with ❤️ by the TalentBridge Team**
-
-[⬆ Back to Top](#talentbridge-frontend-)
-
-</div>

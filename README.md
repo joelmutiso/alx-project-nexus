@@ -158,7 +158,7 @@ npm run dev
 
 ---
 
-## 🐳 Docker Setup (Alternative)
+## 🐳 Docker Setup
 
 ```bash
 # Start all services
@@ -238,7 +238,7 @@ npm run test
 
 **Production URLs:**
 - Backend: https://talent-bridge-backend-detd.onrender.com
-- Frontend: https://talentbridge.vercel.app
+- Frontend: https://alx-project-nexus-silk.vercel.app
 
 ---
 
@@ -279,21 +279,3 @@ git push origin feature/amazing-feature
 This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
 
 ---
-
-## 📞 Contact
-
-- **Email:** support@talentbridge.com
-- **GitHub:** [@yourusername](https://github.com/yourusername)
-- **Issues:** [GitHub Issues](https://github.com/yourusername/talentbridge/issues)
-
----
-
-<div align="center">
-
-**Built with ❤️ by the TalentBridge Team**
-
-⭐ Star us on GitHub if you find this project useful!
-
-[⬆ Back to Top](#talentbridge-)
-
-</div>
