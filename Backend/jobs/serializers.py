@@ -4,6 +4,7 @@ from .models import Job, Application
 class JobSerializer(serializers.ModelSerializer):
     employer_email = serializers.EmailField(source='employer.email', read_only=True)
     days_ago = serializers.SerializerMethodField()
+    applications_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Job
@@ -12,7 +13,7 @@ class JobSerializer(serializers.ModelSerializer):
             'job_type', 'remote_status', 'salary_range',
             'description', 'experience_level', 'salary', 'requirements', 
             'employer_email', 'days_ago', 'created_at', 
-            'is_active'
+            'is_active', 'applications_count'
         ]
         read_only_fields = ['employer', 'created_at', 'updated_at']
 
@@ -25,6 +26,9 @@ class JobSerializer(serializers.ModelSerializer):
         from django.utils import timezone
         delta = timezone.now() - obj.created_at
         return delta.days
+    
+    def get_applications_count(self, obj):
+        return obj.applications.count()
     
     def create(self, validated_data):
         """
