@@ -3,20 +3,21 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LogIn, UserPlus, Briefcase, LogOut, LayoutDashboard } from 'lucide-react';
+import { LogIn, UserPlus, Briefcase, LogOut } from 'lucide-react';
 
 export default function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [isLoaded, setIsLoaded] = useState(false);
 
-  // Check auth status on mount and when pathname changes
   useEffect(() => {
     const token = localStorage.getItem('access_token');
     const role = localStorage.getItem('user_role');
     setIsLoggedIn(!!token);
     setUserRole(role);
+    setIsLoaded(true);
   }, [pathname]);
 
   const handleLogout = () => {
@@ -25,12 +26,14 @@ export default function Navbar() {
     localStorage.removeItem('user_role');
     localStorage.removeItem('user_first_name');
     setIsLoggedIn(false);
+    setUserRole(null);
     router.push('/');
+    router.refresh();
   };
 
   const hideEntireNavbar = ['/login', '/register', '/onboarding', '/google-sync', '/forgot-password', '/reset-password-confirm'].includes(pathname);
   
-  if (hideEntireNavbar) return null;
+  if (hideEntireNavbar || !isLoaded) return null;
 
   const isHomePage = pathname === '/';
 
@@ -45,7 +48,6 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center">
           
-          {/* Logo Section */}
           <Link href="/" className="flex items-center gap-2">
             <div className="bg-[#067a62] p-1.5 rounded-lg">
               <Briefcase className="text-white" size={20} strokeWidth={2.5} />
@@ -55,7 +57,6 @@ export default function Navbar() {
             </span>
           </Link>
 
-          {/* Dynamic Center Links */}
           <div className="hidden md:flex space-x-8 items-center">
             <Link 
               href="/jobs" 
@@ -80,7 +81,6 @@ export default function Navbar() {
             )}
           </div>
 
-          {/* Right Actions */}
           <div className="flex items-center gap-4">
             {!isLoggedIn ? (
               <>
