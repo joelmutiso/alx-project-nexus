@@ -1,105 +1,41 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import Link from 'next/link';
+import useSWR from 'swr';
 import EmployerSidebar from '@/components/Dashboard/EmployerSidebar';
 import { Plus, Users, Briefcase, TrendingUp, Loader2, AlertCircle, Building2, User } from 'lucide-react';
 import api from '@/lib/axios';
 
+const fetcher = (url: string) => api.get(url).then((res) => res.data);
+
 export default function EmployerDashboard() {
-  const [companyName, setCompanyName] = useState('Employer');
-  const [myJobs, setMyJobs] = useState<any[]>([]);
-  const [totalJobsCount, setTotalJobsCount] = useState(0);
-  const [totalApplicants, setTotalApplicants] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [errorMsg, setErrorMsg] = useState('');
 
-  useEffect(() => {
-    // We use a flag to prevent the 'double-fetch' issue in React Strict Mode
-    let isMounted = true;
+  const { data: profile } = useSWR('auth/employer/profile/', fetcher);
+  
+  const { 
+    data: jobsResponse, 
+    error, 
+    isLoading 
+  } = useSWR('jobs/my-jobs/', fetcher, {
+    refreshInterval: 60000, 
+    revalidateOnFocus: false, 
+    shouldRetryOnError: false 
+  });
 
-    const fetchEmployerData = async () => {
-      try {
-        setErrorMsg('');
-        
-        // 1. Fetch Profile
-        try {
-          const profileRes = await api.get('auth/employer/profile/');
-          if (isMounted && profileRes.data?.company_name) {
-            setCompanyName(profileRes.data.company_name);
-          }
-        } catch (profileErr) {
-          console.warn("Could not fetch company name", profileErr);
-        }
+  const companyName = profile?.company_name || 'Employer';
 
-        // 2. Fetch Jobs List
-        const jobsRes = await api.get('jobs/my-jobs/');
-        const jobsData = Array.isArray(jobsRes.data) ? jobsRes.data : jobsRes.data.results || [];
-        
-        if (!isMounted) return;
+  const myJobs = jobsResponse ? (Array.isArray(jobsResponse) ? jobsResponse : jobsResponse.results || []) : [];
 
-        // Set basic job data first so the user sees the table immediately
-        setMyJobs(jobsData);
+  const totalJobsCount = jobsResponse?.count !== undefined 
+    ? jobsResponse.count 
+    : myJobs.filter((job: any) => job.is_active !== false).length;
 
-        // Set Total Jobs Count
-        if (jobsRes.data.count !== undefined) {
-          setTotalJobsCount(jobsRes.data.count);
-        } else {
-          setTotalJobsCount(jobsData.filter((job: any) => job.is_active !== false).length);
-        }
+  const totalApplicants = myJobs.reduce((sum: number, job: any) => {
+    return sum + (job.applications_count || 0);
+  }, 0);
 
-        // 3. SAFE FETCH: Get Applications Count Sequentially
-        // We use a "for loop" instead of Promise.all to avoid hitting the server with 10 requests at once
-        let runningApplicantTotal = 0;
-        const updatedJobs = [...jobsData]; // Create a copy to update
-
-        for (let i = 0; i < updatedJobs.length; i++) {
-          if (!isMounted) return; // Stop if user left the page
-          
-          const job = updatedJobs[i];
-          try {
-            // Fetch individual count
-            const appRes = await api.get(`jobs/${job.id}/applications/`);
-            
-            // Check if response is an array (list) or object with count
-            const count = appRes.data.count !== undefined ? appRes.data.count : (Array.isArray(appRes.data) ? appRes.data.length : 0);
-            
-            // Update the job object and the total
-            updatedJobs[i] = { ...job, applicant_count_fetched: count };
-            runningApplicantTotal += count;
-            
-            // Optional: Update state incrementally if you want to see numbers tick up
-            // setTotalApplicants(runningApplicantTotal); 
-            
-          } catch (err) {
-            console.error(`Failed to fetch apps for Job ID ${job.id}. Likely 429 Rate Limit.`, err);
-            // Keep the previous count or default to 0, but mark it as checked
-            updatedJobs[i] = { ...job, applicant_count_fetched: 0 };
-          }
-        }
-
-        if (isMounted) {
-          setTotalApplicants(runningApplicantTotal);
-          setMyJobs(updatedJobs); // Update the table with the final counts
-        }
-
-      } catch (error: any) {
-        console.error("Failed to load dashboard", error);
-        if (isMounted) setErrorMsg("We couldn't load your job postings right now.");
-      } finally {
-        if (isMounted) setLoading(false);
-      }
-    };
-
-    fetchEmployerData();
-
-    // Cleanup function to stop processing if the component unmounts
-    return () => {
-      isMounted = false;
-    };
-  }, []);
-
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
         <Loader2 className="animate-spin text-[#067a62]" size={40} />
@@ -129,10 +65,10 @@ export default function EmployerDashboard() {
           </div>
         </div>
 
-        {errorMsg && (
+        {error && (
           <div className="mb-8 p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-center gap-3 text-amber-800 font-medium">
             <AlertCircle size={20} className="shrink-0" />
-            <p>{errorMsg}</p>
+            <p>We couldn't load your job postings right now. Please try again later.</p>
           </div>
         )}
 
@@ -150,7 +86,7 @@ export default function EmployerDashboard() {
           </div>
           
           <div className="overflow-x-auto">
-            {!errorMsg && myJobs.length === 0 ? (
+            {!error && myJobs.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
                 <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4">
                   <Building2 className="text-gray-300" size={32} />
@@ -172,7 +108,7 @@ export default function EmployerDashboard() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
-                  {myJobs.slice(0, 5).map((job) => (
+                  {myJobs.slice(0, 5).map((job: any) => (
                     <tr key={job.id} className="hover:bg-emerald-50/30 transition-colors group">
                       <td className="px-8 py-5 font-bold text-gray-900">{job.title}</td>
                       <td className="px-8 py-5 text-gray-600 font-medium">{job.job_type}</td>
@@ -186,9 +122,8 @@ export default function EmployerDashboard() {
                       </td>
                       <td className="px-8 py-5 text-right">
                         <div className="flex items-center justify-end gap-3">
-                            {/* Uses the count we just fetched */}
                             <span className="font-bold text-gray-900">
-                                {job.applicant_count_fetched !== undefined ? job.applicant_count_fetched : "-"}
+                                {job.applications_count || 0}
                             </span>
                             <Link href={`/employer/jobs/${job.id}`} className="inline-flex items-center gap-2 bg-gray-50 text-gray-700 px-4 py-2 rounded-lg text-xs font-bold hover:bg-emerald-50 hover:text-[#067a62] transition-all border border-gray-100">
                                 <Users size={14} /> Manage

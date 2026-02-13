@@ -28,10 +28,15 @@ export default function CandidateApplicationsPage() {
     fetchApplications();
   }, []);
 
-  // Filter logic for search bar and status dropdown
+  // Filter logic
   const filteredApps = applications.filter(app => {
-    const role = (app.job?.title || app.job_title || '').toLowerCase();
-    const company = (app.job?.company_name || app.company_name || '').toLowerCase();
+    // 🛑 SAFETY CHECK: Ensure we don't crash if app.job is null
+    const jobTitle = app.job?.title || app.job_title || ''; 
+    const companyName = app.job?.company_name || app.company_name || '';
+    
+    const role = jobTitle.toLowerCase();
+    const company = companyName.toLowerCase();
+    
     const matchesSearch = role.includes(searchQuery.toLowerCase()) || company.includes(searchQuery.toLowerCase());
     
     const status = (app.status || 'pending').toLowerCase();
@@ -41,11 +46,14 @@ export default function CandidateApplicationsPage() {
   });
 
   const getStatusColor = (s: string) => {
+    if (!s) return 'bg-gray-50 text-gray-600 border-gray-200';
     const statusLower = s.toLowerCase();
+    
     if (statusLower.includes('interview')) return 'bg-emerald-100 text-[#067a62] border-emerald-200';
     if (statusLower.includes('review') || statusLower.includes('pending')) return 'bg-amber-50 text-amber-700 border-amber-200';
     if (statusLower.includes('reject')) return 'bg-red-50 text-red-700 border-red-200';
     if (statusLower.includes('offer') || statusLower.includes('accept')) return 'bg-blue-50 text-blue-700 border-blue-200';
+    
     return 'bg-gray-50 text-gray-600 border-gray-200';
   };
 
@@ -60,7 +68,7 @@ export default function CandidateApplicationsPage() {
           <p className="text-gray-500 mt-2 text-lg">Track and manage all your job applications in one place.</p>
         </div>
 
-        {/* Controls: Search and Filter */}
+        {/* Controls */}
         <div className="flex flex-col md:flex-row gap-4 mb-8">
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
@@ -89,7 +97,7 @@ export default function CandidateApplicationsPage() {
           </div>
         </div>
 
-        {/* Applications List */}
+        {/* List */}
         <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
           {loading ? (
             <div className="flex justify-center py-20">
@@ -118,8 +126,12 @@ export default function CandidateApplicationsPage() {
                 <tbody className="divide-y divide-gray-50">
                   {filteredApps.map((app) => (
                     <tr key={app.id} className="hover:bg-emerald-50/30 transition-colors group">
-                      <td className="px-8 py-5 font-bold text-gray-900">{app.job?.title || app.job_title || 'Position'}</td>
-                      <td className="px-8 py-5 text-gray-600 font-medium">{app.job?.company_name || app.company_name || 'Company'}</td>
+                      <td className="px-8 py-5 font-bold text-gray-900">
+                        {app.job?.title || app.job_title || 'Position Unavailable'}
+                      </td>
+                      <td className="px-8 py-5 text-gray-600 font-medium">
+                        {app.job?.company_name || app.company_name || 'Company Unavailable'}
+                      </td>
                       <td className="px-8 py-5 text-gray-500">
                         {new Date(app.created_at || new Date()).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                       </td>

@@ -1,54 +1,30 @@
 'use client';
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { MapPin, DollarSign, ArrowLeft, Loader2, Send, Upload, FileText } from 'lucide-react';
 import Link from 'next/link';
+import useSWR from 'swr';
 import api from '@/lib/axios';
 
+const fetcher = (url: string) => api.get(url).then((res) => res.data);
+
 export default function CandidateJobDetailPage() {
-  const params = useParams(); // Unwrap params safely
+  const params = useParams();
   const id = params?.id; 
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  const [job, setJob] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [applied, setApplied] = useState(false);
-  const [notFound, setNotFound] = useState(false);
   
-  // Form State
   const [resume, setResume] = useState<File | null>(null);
   const [coverLetter, setCoverLetter] = useState(''); 
 
-  useEffect(() => {
-    // 1. Auth Check
-    const token = localStorage.getItem('access_token');
-    if (!token) {
-      // Redirect to login but remember to bring them back to this job page
-      router.push(`/login?redirect=/jobs/${id}`);
-      return;
-    }
-
-    if (!id) return;
-
-    // 2. Fetch Job Data
-    const fetchJob = async () => {
-      try {
-        const response = await api.get(`jobs/${id}/`);
-        setJob(response.data);
-      } catch (err: any) {
-        console.error("Error fetching job:", err);
-        if (err.response?.status === 404) {
-          setNotFound(true);
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchJob();
-  }, [id, router]);
+  const { data: job, error, isLoading } = useSWR(id ? `jobs/${id}/` : null, fetcher, {
+    revalidateOnFocus: false,
+    shouldRetryOnError: false
+  });
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -68,32 +44,31 @@ export default function CandidateJobDetailPage() {
       formData.append('resume', resume);
       formData.append('cover_letter', coverLetter); 
       
-      await api.post(`jobs/${id}/apply/`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+      await api.post(`jobs/${id}/apply/`, formData);
       
       setApplied(true);
-      setTimeout(() => router.push('/candidate'), 2000); 
+      setTimeout(() => router.push('/candidate/applications'), 2000); 
     } catch (err: any) {
       console.error("Apply error:", err);
-      // Handle "You have already applied" errors gracefully
-      if (err.response?.status === 400 && err.response?.data?.detail?.includes('already applied')) {
-         alert("You have already applied for this job!");
-         setApplied(true); // Treat as success state to stop them from retrying
+      if (err.response?.status === 400) {
+          const backendErrors = err.response.data;
+          if (typeof backendErrors === 'object') {
+            const errorMessages = Object.values(backendErrors).flat().join('\n');
+            alert(`Application Error:\n${errorMessages}`);
+          } else {
+            alert("Application failed. Please check your inputs.");
+          }
       } else {
-         const errorMsg = err.response?.data?.detail || "Application failed. Please check your inputs.";
-         alert(`Error: ${errorMsg}`);
+          alert("A server error occurred. Please try again later.");
       }
     } finally {
       setSubmitting(false);
     }
   };
 
-  if (loading) return <div className="flex justify-center py-20 min-h-screen"><Loader2 className="animate-spin text-[#067a62]" size={40}/></div>;
+  if (isLoading) return <div className="flex justify-center py-20 min-h-screen"><Loader2 className="animate-spin text-[#067a62]" size={40}/></div>;
   
-  if (notFound) return (
+  if (error && error.response?.status === 404) return (
     <div className="flex flex-col items-center justify-center py-20 min-h-screen">
       <h2 className="text-2xl font-bold text-gray-700">Job Not Found</h2>
       <Link href="/jobs" className="mt-4 text-[#067a62] hover:underline">Return to Jobs</Link>
@@ -106,7 +81,7 @@ export default function CandidateJobDetailPage() {
         <Send className="text-green-600" size={30} />
       </div>
       <h2 className="text-2xl font-bold text-gray-900">Application Sent!</h2>
-      <p className="text-gray-500 mt-2">Good luck! Redirecting you to dashboard...</p>
+      <p className="text-gray-500 mt-2">Good luck! Redirecting you to your applications...</p>
     </div>
   );
 
@@ -118,7 +93,6 @@ export default function CandidateJobDetailPage() {
         </Link>
 
         <div className="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm">
-          {/* Header Section */}
           <div className="flex flex-col lg:flex-row justify-between gap-8 mb-8 border-b border-gray-100 pb-8">
             <div className="flex-1">
               <h1 className="text-3xl font-bold text-gray-900 mb-2">{job?.title}</h1>
@@ -129,11 +103,9 @@ export default function CandidateJobDetailPage() {
               </div>
             </div>
             
-            {/* Application Form */}
             <div className="flex flex-col gap-4 min-w-[320px] bg-gray-50 p-6 rounded-2xl">
               <h3 className="font-bold text-gray-900">Apply Now</h3>
               
-              {/* Cover Letter */}
               <div>
                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Cover Letter</label>
                 <textarea 
@@ -144,7 +116,6 @@ export default function CandidateJobDetailPage() {
                 />
               </div>
 
-              {/* Resume Upload */}
               <div>
                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Resume / CV</label>
                 <div 
@@ -186,7 +157,6 @@ export default function CandidateJobDetailPage() {
             </div>
           </div>
 
-          {/* Details */}
           <div className="space-y-8 max-w-2xl">
             <section>
               <h3 className="text-lg font-bold mb-4 flex items-center gap-2">

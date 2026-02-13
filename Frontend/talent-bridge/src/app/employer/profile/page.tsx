@@ -1,66 +1,66 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import useSWR from 'swr';
 import EmployerSidebar from '@/components/Dashboard/EmployerSidebar';
-import { Building2, Save, Loader2, Mail, Globe, MapPin, AlertCircle, CheckCircle } from 'lucide-react';
+import { User, Mail, Phone, MapPin, Building2, Save, Loader2, AlertCircle } from 'lucide-react';
 import api from '@/lib/axios';
 
+const fetcher = (url: string) => api.get(url).then((res) => res.data);
+
 export default function EmployerProfilePage() {
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
-  
-  const [profile, setProfile] = useState({
+  const [formData, setFormData] = useState({
     company_name: '',
     phone: '',
+    address: '',
     website: '',
-    location: '',
     bio: ''
   });
+  const [saving, setSaving] = useState(false);
+  const [successMsg, setSuccessMsg] = useState('');
 
+  // 1. Use SWR to fetch profile data (Fixes 429 Error)
+  const { data: profile, error, isLoading } = useSWR('auth/employer/profile/', fetcher, {
+    shouldRetryOnError: false,
+    revalidateOnFocus: false
+  });
+
+  // 2. Sync SWR data to local state for editing
   useEffect(() => {
-    const fetchProfile = async () => {
-      try {
-        const response = await api.get('auth/employer/profile/');
-        setProfile({
-          company_name: response.data.company_name || '',
-          phone: response.data.phone || '',
-          website: response.data.website || '',
-          location: response.data.location || '',
-          bio: response.data.bio || ''
-        });
-      } catch (err: any) {
-        if (err.response?.status !== 404) {
-          console.error("Fetch failed", err);
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchProfile();
-  }, []);
+    if (profile) {
+      setFormData({
+        company_name: profile.company_name || '',
+        phone: profile.phone || '',
+        address: profile.address || '',
+        website: profile.website || '',
+        bio: profile.bio || ''
+      });
+    }
+  }, [profile]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-    setMessage(null);
-
+    setSuccessMsg('');
     try {
-      await api.put('auth/employer/profile/', profile);
-      setMessage({ type: 'success', text: "Profile saved successfully!" });
-    } catch (err: any) {
-      const errorMsg = err.response?.data?.detail || "Connection failed. Please check your data.";
-      setMessage({ type: 'error', text: `Save Failed: ${errorMsg}` });
+      await api.patch('auth/employer/profile/', formData);
+      setSuccessMsg('Profile updated successfully!');
+    } catch (err) {
+      alert('Failed to update profile. Please try again.');
     } finally {
       setSaving(false);
     }
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
         <Loader2 className="animate-spin text-[#067a62]" size={40} />
-        <p className="text-gray-500 mt-4 font-medium">Loading profile...</p>
       </div>
     );
   }
@@ -69,102 +69,122 @@ export default function EmployerProfilePage() {
     <div className="min-h-screen bg-gray-50 flex">
       <EmployerSidebar />
       
-      <main className="flex-1 lg:ml-64 p-6 lg:p-10 pt-20 lg:pt-10 w-full max-w-5xl mx-auto">
-        <div className="mb-10 text-center md:text-left">
-          <h1 className="text-3xl lg:text-4xl font-black text-gray-900 tracking-tight">Company Profile</h1>
-          <p className="text-gray-500 mt-2 text-lg">This information will be displayed on your job listings.</p>
-        </div>
-
-        {message && (
-          <div className={`mb-8 p-4 rounded-xl flex items-center gap-3 font-medium border ${
-            message.type === 'success' ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : 'bg-red-50 text-red-800 border-red-200'
-          }`}>
-            {message.type === 'success' ? <CheckCircle size={20} className="shrink-0" /> : <AlertCircle size={20} className="shrink-0" />}
-            <p>{message.text}</p>
+      <main className="flex-1 lg:ml-64 p-6 lg:p-10 pt-20 lg:pt-10 w-full">
+        <div className="max-w-4xl mx-auto">
+          
+          <div className="mb-8">
+            <h1 className="text-3xl font-black text-gray-900 tracking-tight">Company Profile</h1>
+            <p className="text-gray-500 mt-2 text-lg">Manage your company information and branding.</p>
           </div>
-        )}
 
-        <div className="bg-white p-6 md:p-10 rounded-3xl border border-gray-100 shadow-sm">
-          <form onSubmit={handleSubmit} className="space-y-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div className="space-y-2">
-                <label className="flex items-center gap-2 text-sm font-bold text-gray-700">
-                  <Building2 size={16} className="text-[#067a62]" /> Company Name *
-                </label>
-                <input 
-                  required
-                  className="w-full p-4 bg-gray-50 border border-gray-200 rounded-2xl outline-none focus:ring-2 focus:ring-[#067a62] transition-all"
-                  value={profile.company_name}
-                  onChange={(e) => setProfile({...profile, company_name: e.target.value})}
-                  placeholder="e.g. TechFlow Systems"
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <label className="flex items-center gap-2 text-sm font-bold text-gray-700">
-                  <Mail size={16} className="text-[#067a62]" /> Phone / Contact
-                </label>
-                <input 
-                  className="w-full p-4 bg-gray-50 border border-gray-200 rounded-2xl outline-none focus:ring-2 focus:ring-[#067a62] transition-all"
-                  value={profile.phone}
-                  onChange={(e) => setProfile({...profile, phone: e.target.value})}
-                  placeholder="+254..."
-                />
-              </div>
+          {error && (
+            <div className="mb-8 p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-center gap-3 text-amber-800 font-medium">
+              <AlertCircle size={20} className="shrink-0" />
+              <p>Could not load profile. Please wait a moment.</p>
             </div>
+          )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div className="space-y-2">
-                <label className="flex items-center gap-2 text-sm font-bold text-gray-700">
-                  <Globe size={16} className="text-[#067a62]" /> Website
-                </label>
-                <input 
-                  className="w-full p-4 bg-gray-50 border border-gray-200 rounded-2xl outline-none focus:ring-2 focus:ring-[#067a62] transition-all"
-                  value={profile.website}
-                  onChange={(e) => setProfile({...profile, website: e.target.value})}
-                  placeholder="https://..."
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <label className="flex items-center gap-2 text-sm font-bold text-gray-700">
-                  <MapPin size={16} className="text-[#067a62]" /> Location
-                </label>
-                <input 
-                  className="w-full p-4 bg-gray-50 border border-gray-200 rounded-2xl outline-none focus:ring-2 focus:ring-[#067a62] transition-all"
-                  value={profile.location}
-                  onChange={(e) => setProfile({...profile, location: e.target.value})}
-                  placeholder="e.g. Nairobi, Kenya"
-                />
+          {successMsg && (
+            <div className="mb-8 p-4 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-3 text-emerald-800 font-medium">
+              <CheckCircle size={20} className="shrink-0" />
+              <p>{successMsg}</p>
+            </div>
+          )}
+
+          <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
+            <div className="p-8 border-b border-gray-50 bg-gray-50/30">
+              <div className="flex items-center gap-6">
+                <div className="w-24 h-24 bg-[#0f172a] rounded-full flex items-center justify-center text-white text-3xl font-bold shadow-lg">
+                  {profile?.company_name?.charAt(0) || <Building2 size={32} />}
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900">{profile?.company_name || 'Your Company'}</h2>
+                  <p className="text-gray-500 flex items-center gap-2 mt-1">
+                    <Mail size={16} /> {profile?.user?.email || 'email@example.com'}
+                  </p>
+                </div>
               </div>
             </div>
 
-            <div className="space-y-2">
-              <label className="flex items-center gap-2 text-sm font-bold text-gray-700">
-                About Company
-              </label>
-              <textarea 
-                rows={5}
-                className="w-full p-4 bg-gray-50 border border-gray-200 rounded-2xl outline-none focus:ring-2 focus:ring-[#067a62] transition-all resize-none"
-                value={profile.bio}
-                onChange={(e) => setProfile({...profile, bio: e.target.value})}
-                placeholder="Tell us about your mission..."
-              />
-            </div>
+            <form onSubmit={handleSubmit} className="p-8 space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-gray-700 flex items-center gap-2">
+                    <Building2 size={16} className="text-gray-400"/> Company Name
+                  </label>
+                  <input
+                    type="text"
+                    name="company_name"
+                    value={formData.company_name}
+                    onChange={handleChange}
+                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#067a62] outline-none transition-all font-medium text-gray-900"
+                    placeholder="e.g. Acme Corp"
+                  />
+                </div>
 
-            <div className="pt-4 border-t border-gray-100 flex justify-end">
-              <button 
-                type="submit" 
-                disabled={saving}
-                className="w-full md:w-auto bg-[#067a62] text-white px-10 py-4 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-[#056350] transition-all shadow-lg shadow-emerald-900/10 active:scale-[0.98] disabled:opacity-50"
-              >
-                {saving ? <Loader2 className="animate-spin" size={20} /> : <Save size={20} />}
-                {saving ? "Saving Changes..." : "Save Changes"}
-              </button>
-            </div>
-          </form>
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-gray-700 flex items-center gap-2">
+                    <Phone size={16} className="text-gray-400"/> Phone Number
+                  </label>
+                  <input
+                    type="tel"
+                    name="phone"
+                    value={formData.phone}
+                    onChange={handleChange}
+                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#067a62] outline-none transition-all font-medium text-gray-900"
+                    placeholder="+1 (555) 000-0000"
+                  />
+                </div>
+
+                <div className="space-y-2 md:col-span-2">
+                  <label className="text-sm font-bold text-gray-700 flex items-center gap-2">
+                    <MapPin size={16} className="text-gray-400"/> Address / Location
+                  </label>
+                  <input
+                    type="text"
+                    name="address"
+                    value={formData.address}
+                    onChange={handleChange}
+                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#067a62] outline-none transition-all font-medium text-gray-900"
+                    placeholder="123 Business St, Tech City"
+                  />
+                </div>
+
+                <div className="space-y-2 md:col-span-2">
+                  <label className="text-sm font-bold text-gray-700 flex items-center gap-2">
+                    <User size={16} className="text-gray-400"/> Bio / Description
+                  </label>
+                  <textarea
+                    name="bio"
+                    rows={4}
+                    value={formData.bio}
+                    onChange={handleChange}
+                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#067a62] outline-none transition-all font-medium text-gray-900 resize-none"
+                    placeholder="Tell us about your company culture and mission..."
+                  />
+                </div>
+              </div>
+
+              <div className="pt-6 border-t border-gray-50 flex justify-end">
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="flex items-center gap-2 bg-[#067a62] text-white px-8 py-3 rounded-xl font-bold hover:bg-[#056350] transition-all shadow-lg shadow-emerald-900/10 active:scale-95 disabled:opacity-50 disabled:pointer-events-none"
+                >
+                  {saving ? <Loader2 size={20} className="animate-spin" /> : <Save size={20} />}
+                  Save Changes
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       </main>
     </div>
+  );
+}
+
+function CheckCircle({ size, className }: { size: number, className?: string }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
   );
 }
