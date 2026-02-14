@@ -1,11 +1,13 @@
 'use client';
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, MapPin, Building2, DollarSign, Loader2, AlertCircle, Clock, Bookmark, Wifi, Filter } from 'lucide-react';
+import useSWR from 'swr';
+import { Search, MapPin, Building2, DollarSign, Loader2, Bookmark, Wifi, Filter } from 'lucide-react';
 import api from '@/lib/axios';
+import { useDebounce } from 'use-debounce'; // You might need to install this: npm install use-debounce
 
-// 1. MAPPINGS: Match Frontend Labels to Backend Model Values exactly
+// 1. MAPPINGS
 const JOB_TYPE_MAP: { [key: string]: string } = {
   'Full-time': 'Full-Time',
   'Part-time': 'Part-Time',
@@ -14,71 +16,60 @@ const JOB_TYPE_MAP: { [key: string]: string } = {
   'Internship': 'Internship'
 };
 
+// Custom Fetcher for SWR that accepts params
+const fetcher = ([url, params]: [string, any]) => api.get(url, { params }).then(res => res.data);
+
 export default function FindJobsPage() {
   const router = useRouter();
   
-  // Data State
-  const [jobs, setJobs] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [bookmarkedJobs, setBookmarkedJobs] = useState<Set<number>>(new Set());
-  
-  // Filter State
+  // Local State for Filters
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedLocation, setSelectedLocation] = useState(''); // Location State
+  const [selectedLocation, setSelectedLocation] = useState('');
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
   const [selectedExperience, setSelectedExperience] = useState<string[]>([]);
   const [selectedWorkStyle, setSelectedWorkStyle] = useState<string[]>([]);
+  
+  // Debounce the search input to avoid hitting the API on every keystroke
+  // If you don't want to install 'use-debounce', you can remove this and pass searchQuery directly, 
+  // but it will trigger many requests.
+  const [debouncedSearch] = useDebounce(searchQuery, 500);
+  const [debouncedLocation] = useDebounce(selectedLocation, 500);
 
-  // 2. THE SEARCH ENGINE
-  const fetchJobs = useCallback(async () => {
-    setLoading(true);
-    setError('');
-    try {
-      // Prepare comma-separated strings for backend (e.g. "Full-Time,Part-Time")
-      const backendTypes = selectedTypes.map(t => JOB_TYPE_MAP[t]).filter(Boolean).join(',');
-      const backendExperience = selectedExperience.join(','); 
-      const backendWorkStyle = selectedWorkStyle.join(',');
+  const [bookmarkedJobs, setBookmarkedJobs] = useState<Set<number>>(new Set());
 
-      // Construct Query Params for Django
-      const params: any = {
-        is_active: true
-      };
-      
-      // ✅ FIX: Connect all inputs to the Backend parameters
-      if (searchQuery) params.search = searchQuery;
-      if (selectedLocation) params.location = selectedLocation; // "Miami" now works!
-      if (backendTypes) params.job_type = backendTypes;
-      if (backendExperience) params.experience_level = backendExperience;
-      if (backendWorkStyle) params.remote_status = backendWorkStyle;
+  // Prepare Query Params
+  const backendTypes = selectedTypes.map(t => JOB_TYPE_MAP[t]).filter(Boolean).join(',');
+  const backendExperience = selectedExperience.join(','); 
+  const backendWorkStyle = selectedWorkStyle.join(',');
 
-      const response = await api.get('jobs/', { params });
-      
-      const data = Array.isArray(response.data) ? response.data : response.data.results || [];
-      setJobs(data);
+  const queryParams = {
+    is_active: true,
+    search: debouncedSearch || undefined,
+    location: debouncedLocation || undefined,
+    job_type: backendTypes || undefined,
+    experience_level: backendExperience || undefined,
+    remote_status: backendWorkStyle || undefined,
+  };
 
-      // Restore bookmarks
-      const initialBookmarks = new Set<number>();
-      data.forEach((job: any) => {
-         if (job.is_bookmarked) initialBookmarks.add(job.id);
+  // 2. SWR SEARCH ENGINE
+  // The key is an array: ['jobs/', queryParams]. When queryParams change, SWR re-fetches.
+  const { data: jobsResponse, error, isLoading } = useSWR(['jobs/', queryParams], fetcher, {
+    keepPreviousData: true, // Awesome feature: keeps showing old list while new one loads
+    revalidateOnFocus: false,
+    onSuccess: (data) => {
+      // Sync bookmarks from fresh data
+      const list = Array.isArray(data) ? data : data.results || [];
+      const newBookmarks = new Set<number>();
+      list.forEach((job: any) => {
+         if (job.is_bookmarked) newBookmarks.add(job.id);
       });
-      setBookmarkedJobs(initialBookmarks);
-
-    } catch (err) {
-      console.error("Fetch error:", err);
-      setError("Connecting to TalentBridge server...");
-    } finally {
-      setLoading(false);
+      setBookmarkedJobs(newBookmarks);
     }
-  }, [searchQuery, selectedLocation, selectedTypes, selectedExperience, selectedWorkStyle]);
+  });
 
-  // Debounce (Wait 500ms after typing)
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      fetchJobs();
-    }, 500); 
-    return () => clearTimeout(timer);
-  }, [fetchJobs]);
+  const jobs = jobsResponse ? (Array.isArray(jobsResponse) ? jobsResponse : jobsResponse.results || []) : [];
+
+  // --- Handlers ---
 
   const handleApplyClick = (jobId: string | number) => {
     const token = localStorage.getItem('access_token');
@@ -95,16 +86,25 @@ export default function FindJobsPage() {
       router.push(`/login?redirect=/jobs`);
       return;
     }
+    // Optimistic Update
+    setBookmarkedJobs((prev) => {
+      const newBookmarks = new Set(prev);
+      if (newBookmarks.has(jobId)) newBookmarks.delete(jobId);
+      else newBookmarks.add(jobId);
+      return newBookmarks;
+    });
+
     try {
       await api.post(`jobs/${jobId}/bookmark/`);
+    } catch (err: any) {
+      console.error("Failed to bookmark job", err);
+      // Revert if failed
       setBookmarkedJobs((prev) => {
         const newBookmarks = new Set(prev);
         if (newBookmarks.has(jobId)) newBookmarks.delete(jobId);
         else newBookmarks.add(jobId);
         return newBookmarks;
       });
-    } catch (err: any) {
-      console.error("Failed to bookmark job", err);
     }
   };
 
@@ -112,7 +112,14 @@ export default function FindJobsPage() {
     setter(prev => prev.includes(value) ? prev.filter(t => t !== value) : [...prev, value]);
   };
 
-  // Filter Options (Must match Django Model values)
+  const handleClearFilters = () => {
+    setSearchQuery('');
+    setSelectedLocation('');
+    setSelectedTypes([]);
+    setSelectedExperience([]);
+    setSelectedWorkStyle([]);
+  };
+
   const jobTypes = ['Full-time', 'Part-time', 'Contract', 'Freelance', 'Internship'];
   const experienceLevels = ['Junior', 'Mid', 'Senior', 'Lead'];
   const workStyles = ['Remote', 'On-site', 'Hybrid'];
@@ -125,7 +132,7 @@ export default function FindJobsPage() {
         <div className="mb-10 text-center md:text-left">
           <h1 className="text-3xl font-bold text-gray-900 mb-3">Find Your Next Role</h1>
           <p className="text-gray-500 text-sm">
-            {loading ? 'Scanning opportunities...' : `${jobs.length} active jobs found`}
+            {isLoading ? 'Scanning opportunities...' : `${jobs.length} active jobs found`}
           </p>
           
           <div className="mt-6 flex flex-col md:flex-row gap-4 max-w-4xl">
@@ -140,7 +147,7 @@ export default function FindJobsPage() {
                 className="w-full pl-11 pr-4 py-3 bg-white border border-gray-200 rounded-lg focus:ring-1 focus:ring-[#067a62] outline-none shadow-sm"
               />
             </div>
-            {/* 2. Location Search (Added back!) */}
+            {/* 2. Location Search */}
             <div className="relative md:w-1/3">
                <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                <input 
@@ -157,7 +164,7 @@ export default function FindJobsPage() {
         {error && (
           <div className="mb-6 p-4 bg-amber-50 text-amber-800 rounded-lg flex items-center gap-3 border border-amber-200 text-sm">
             <Loader2 className="animate-spin" size={18} />
-            <p>{error}</p>
+            <p>Connection issue. Retrying...</p>
           </div>
         )}
 
@@ -194,8 +201,8 @@ export default function FindJobsPage() {
                   <div className="space-y-3">
                     {experienceLevels.map(level => (
                       <label key={level} className="flex items-center gap-3 cursor-pointer group">
-                         <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${selectedExperience.includes(level) ? 'border-[#067a62] bg-[#067a62]' : 'border-gray-300'}`}>
-                          {selectedExperience.includes(level) && <div className="w-2 h-2 bg-white rounded-full"></div>}
+                          <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${selectedExperience.includes(level) ? 'border-[#067a62] bg-[#067a62]' : 'border-gray-300'}`}>
+                           {selectedExperience.includes(level) && <div className="w-2 h-2 bg-white rounded-full"></div>}
                         </div>
                         <input type="checkbox" className="hidden" checked={selectedExperience.includes(level)} onChange={() => handleFilterChange(setSelectedExperience, level)} />
                         <span className="text-gray-600 text-sm">{level}</span>
@@ -210,8 +217,8 @@ export default function FindJobsPage() {
                   <div className="space-y-3">
                     {workStyles.map(style => (
                       <label key={style} className="flex items-center gap-3 cursor-pointer group">
-                         <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${selectedWorkStyle.includes(style) ? 'border-[#067a62] bg-[#067a62]' : 'border-gray-300'}`}>
-                          {selectedWorkStyle.includes(style) && <div className="w-2 h-2 bg-white rounded-full"></div>}
+                          <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${selectedWorkStyle.includes(style) ? 'border-[#067a62] bg-[#067a62]' : 'border-gray-300'}`}>
+                           {selectedWorkStyle.includes(style) && <div className="w-2 h-2 bg-white rounded-full"></div>}
                         </div>
                         <input type="checkbox" className="hidden" checked={selectedWorkStyle.includes(style)} onChange={() => handleFilterChange(setSelectedWorkStyle, style)} />
                         <span className="text-gray-600 text-sm">{style}</span>
@@ -225,7 +232,7 @@ export default function FindJobsPage() {
 
           {/* --- MAIN JOB LIST --- */}
           <main className="flex-1">
-            {loading ? (
+            {isLoading && !jobsResponse ? (
               <div className="space-y-4">
                 {[1, 2, 3].map((i) => (
                   <div key={i} className="bg-white border border-gray-100 rounded-xl p-6 shadow-sm animate-pulse">
@@ -244,17 +251,11 @@ export default function FindJobsPage() {
                 <Building2 className="mx-auto text-gray-300 mb-4" size={40} />
                 <h3 className="text-lg font-bold text-gray-900">No jobs found</h3>
                 <p className="text-gray-500 text-sm mt-1">
-                  We couldn't find any jobs matching "{searchQuery || 'your criteria'}" 
-                  {selectedLocation && ` in "${selectedLocation}"`}.
+                  We couldn't find any jobs matching "{debouncedSearch || 'your criteria'}" 
+                  {debouncedLocation && ` in "${debouncedLocation}"`}.
                 </p>
                 <button 
-                  onClick={() => {
-                    setSearchQuery('');
-                    setSelectedLocation('');
-                    setSelectedTypes([]);
-                    setSelectedExperience([]);
-                    setSelectedWorkStyle([]);
-                  }}
+                  onClick={handleClearFilters}
                   className="mt-4 text-[#067a62] font-semibold hover:underline"
                 >
                   Clear all filters
@@ -262,9 +263,9 @@ export default function FindJobsPage() {
               </div>
             ) : (
               <div className="space-y-4">
-                {jobs.map((job) => (
+                {jobs.map((job: any) => (
                   <div key={job.id} className="bg-white border border-gray-200 rounded-xl p-6 hover:shadow-md transition-shadow relative">
-                     <div className="flex justify-between items-start gap-4">
+                      <div className="flex justify-between items-start gap-4">
                       <div className="flex gap-4">
                         <div className="w-12 h-12 bg-emerald-50 rounded-lg flex items-center justify-center shrink-0 border border-emerald-100">
                           <Building2 className="text-[#067a62]" size={24} />
@@ -314,9 +315,9 @@ export default function FindJobsPage() {
                         {job.job_type}
                       </span>
                       {job.experience_level && (
-                         <span className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-xs font-semibold">
-                           {job.experience_level}
-                         </span>
+                          <span className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-xs font-semibold">
+                            {job.experience_level}
+                          </span>
                       )}
                     </div>
                   </div>

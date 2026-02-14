@@ -1,52 +1,39 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import Link from 'next/link';
+import useSWR from 'swr';
 import CandidateSidebar from '@/components/Dashboard/CandidateSidebar';
 import { Search, FileText, Eye, MessageSquare, TrendingUp, ExternalLink, Loader2, Briefcase, AlertCircle, User } from 'lucide-react';
 import api from '@/lib/axios';
 
+// Define Fetcher Function for SWR
+const fetcher = (url: string) => api.get(url).then((res) => res.data);
+
 export default function CandidateDashboard() {
-  const [userName, setUserName] = useState('Candidate');
-  const [applications, setApplications] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [errorMsg, setErrorMsg] = useState('');
+  // 1. Fetch User Profile
+  const { data: userData, error: userError } = useSWR('auth/me/', fetcher, {
+    revalidateOnFocus: false, // Don't refetch just because user clicked the window
+    shouldRetryOnError: false
+  });
 
-  useEffect(() => {
-    const fetchDashboardData = async () => {
-      try {
-        setErrorMsg('');
-        
-        // 1. Fetch User Profile
-        const userRes = await api.get('auth/me/');
-        const userData = Array.isArray(userRes.data) ? userRes.data[0] : userRes.data;
-        if (userData?.first_name) {
-          setUserName(userData.first_name);
-        } else if (userData?.username) {
-          setUserName(userData.username);
-        }
+  // 2. Fetch Applications
+  const { data: applicationsData, error: appError, isLoading } = useSWR('jobs/applications/me/', fetcher, {
+    revalidateOnFocus: false
+  });
 
-        // 2. Fetch User's Applications
-        const appRes = await api.get('jobs/applications/me/');
-        const appData = Array.isArray(appRes.data) ? appRes.data : appRes.data.results || [];
-        setApplications(appData);
+  // Derived State
+  const userName = userData ? (Array.isArray(userData) ? userData[0]?.first_name : userData.first_name || userData.username) : 'Candidate';
+  const applications = applicationsData ? (Array.isArray(applicationsData) ? applicationsData : applicationsData.results || []) : [];
+  
+  // Error Handling
+  const errorMsg = userError || appError 
+    ? (userError?.response?.status === 429 || appError?.response?.status === 429 
+        ? "You're refreshing a bit too fast! Please wait a minute." 
+        : "We couldn't load your dashboard data right now.") 
+    : '';
 
-      } catch (error: any) {
-        console.error("Failed to load dashboard data", error);
-        if (error.response?.status === 429) {
-          setErrorMsg("You're refreshing a bit too fast! Please wait a minute for the rate limit to reset.");
-        } else {
-          setErrorMsg("We couldn't load your applications right now. Please try again later.");
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchDashboardData();
-  }, []);
-
-  if (loading) {
+  if (isLoading && !userData) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
         <Loader2 className="animate-spin text-[#067a62]" size={40} />
@@ -67,7 +54,6 @@ export default function CandidateDashboard() {
             <p className="text-gray-500 mt-2 text-lg">Here is a summary of your job search activity.</p>
           </div>
           
-          {/* 🚀 THE FIX: Action Buttons Grouped */}
           <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
             <Link 
               href="/jobs" 
@@ -129,7 +115,7 @@ export default function CandidateDashboard() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
-                  {applications.slice(0, 5).map((app) => (
+                  {applications.slice(0, 5).map((app: any) => (
                     <ApplicationRow 
                       key={app.id}
                       role={app.job?.title || app.job_title || 'Position'} 
@@ -151,7 +137,6 @@ export default function CandidateDashboard() {
 }
 
 // --- Helper Components ---
-
 function StatCard({ title, value, icon }: { title: string, value: string, icon: React.ReactNode }) {
   return (
     <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col justify-between h-36 hover:border-emerald-100 hover:shadow-md transition-all group cursor-default">
